@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import utils
 import graph
-import preprocessing
+from preprocessing import *
 
 
 class SNAP_Dataset(Dataset):
@@ -50,6 +50,7 @@ class SNAP_Dataset(Dataset):
         self.feature_neighbor = feature_neighbor
         self.pca_components = pca_components
         self.features_list = features_list
+        self.path2img = path2img
 
     def __len__(self):
         return self.labels.shape[0]
@@ -111,15 +112,15 @@ class SNAP_Dataset(Dataset):
         self.cell_nbhd = utils.get_neighborhood_composition(
             knn_indices=self.spatial_knn_indices, labels=self.df[celltype])
 
-    def prepare_images(image,
-                       locations,
+    def prepare_images(self,
+                       image,
                        size,
                        truncation,
                        pad=1000,
                        verbose=False):
 
         n_cells = self.df.shape[0]
-        power = len(str(n_cells)) + 1
+        power = len(str(n_cells))
         print('Saving images...')
         process_save_images(image=image,
                             locations=self.locations,

@@ -5,6 +5,8 @@ from skimage.measure import regionprops
 from scipy.io import loadmat
 from skimage.io import imread
 from skimage.transform import resize
+import os
+from tqdm import tqdm
 
 
 def get_cell_idx_partition(df):
@@ -112,23 +114,23 @@ def process_save_images(image,
                         verbose=False):
     pad_image = np.zeros(
         (image.shape[0] + 2 * pad, image.shape[1] + 2 * pad, image.shape[2]))
-    pad_image[pad:pad_image.shape[0] + pad,
-              pad:pad_image.shape[1] + pad, :] = pad_image
-    truncate = np.quantile(pad_image, q=trun_qr, axis=(0, 1))
+    pad_image[pad:image.shape[0] + pad,
+              pad:image.shape[1] + pad, :] = image
+    truncate = np.quantile(pad_image, q=truncation, axis=(0, 1))
     truncate = truncate[None, None, :]
 
     pad_image[pad_image <= truncate] = 0
     pad_image[pad_image > truncate] = 1
 
     n_cells = locations.shape[0]
-    power = len(str(n_cells)) + 1
+    power = len(str(n_cells))
 
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
 
     if verbose:
         print("Processing each cell...and saving!", flush=True)
-    for i in tqdm(range(n_cell)):
+    for i in tqdm(range(n_cells)):
         # process each cell
         center_x = locations[i][0]
         center_y = locations[i][1]
@@ -146,7 +148,7 @@ def process_save_images(image,
                 plt.imshow(cur_image[1, :, :])
                 plt.show()
 
-        np.save(file=os.path.join(save_folder, f"size{size}", "images",
+        np.save(file=os.path.join(save_folder,
                                   f"img_{i:0{power}d}"),
                 arr=cur_image)
 
