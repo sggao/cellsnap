@@ -6,12 +6,19 @@ import numpy as np
 import pandas as pd
 import utils
 import graph
+import preprocessing
 
 
 class SNAP_Dataset(Dataset):
     # SNAP Dataset Object
 
-    def __init__(self, df, k, feature_neighbor, pca_component, features_list, path2img):
+    def __init__(self,
+                 df,
+                 k=15,
+                 feature_neighbor=15,
+                 pca_components=25,
+                 features_list=None,
+                 path2img=None):
         """
         Form dataset of spatial single-cell data
         Parameters
@@ -28,7 +35,7 @@ class SNAP_Dataset(Dataset):
         features_list : list(str)
             list of feature names to be extracted from df
         path2img : str, optional
-            path to images
+            path to images (to be saved)
 
         """
 
@@ -41,7 +48,7 @@ class SNAP_Dataset(Dataset):
         self.df = df
         self.k = k
         self.feature_neighbor = feature_neighbor
-        self.pca_component = pca_component
+        self.pca_components = pca_components
         self.features_list = features_list
 
     def __len__(self):
@@ -54,7 +61,14 @@ class SNAP_Dataset(Dataset):
         labels = self.labels[index]
         return img, labels
 
-    def initialize(self, cent_x, cent_y, celltype, n_runs = 1, resolution_tol = 0.05):
+    def initialize(self,
+                   cent_x,
+                   cent_y,
+                   celltype,
+                   resolution=1.0,
+                   cluster=None, 
+                   n_runs=1,
+                   resolution_tol=0.05):
         """
         Parameters
         ----------
@@ -71,23 +85,46 @@ class SNAP_Dataset(Dataset):
 
         # create feature edges and feature labels
         self.feature_edges = graph.get_feature_edges(
-            arr=features, pca_components=self.pca_components,
-            n_neighbors=self.feature_neighbor, metric='correlation', verbose=False
-        )
+            arr=self.features,
+            pca_components=self.pca_components,
+            n_neighbors=self.feature_neighbor,
+            metric='correlation',
+            verbose=False)
         self.feature_labels = graph.graph_clustering(
-            df.shape[0], feature_edges, resolution=res, n_clusters=None, n_runs=n_runs,
-            resolution_tol=resolution_tol, seed=None, verbose=False
-        )
+            self.df.shape[0],
+            self.feature_edges,
+            resolution=resolution,
+            n_clusters=cluster,
+            n_runs=n_runs,
+            resolution_tol=resolution_tol,
+            seed=None,
+            verbose=False)
+        self.df['feature_labels'] = self.feature_labels
+
         print('Calculating cell neighborhood composition matrix...')
-        locations = self.df[['centroid_x', 'centroid_y']].to_numpy()
-        self.spatial_knn_indices = graph.get_spatial_knn_indices(locations=locations, 
-                n_neighbors=np.unique(self.df[celltype]).shape[0], method='kd_tree')
+        locations = self.df[[cent_x, cent_y]].to_numpy()
+        self.locations = locations
+        self.spatial_knn_indices = graph.get_spatial_knn_indices(
+            locations=locations,
+            n_neighbors=self.k,
+            method='kd_tree')
+        self.cell_nbhd = utils.get_neighborhood_composition(
+            knn_indices=self.spatial_knn_indices, labels=self.df[celltype])
 
+    def prepare_images(image,
+                       locations,
+                       size,
+                       truncation,
+                       pad=1000,
+                       verbose=False):
 
-
-        
-
-        return
-
-    def prepare_images():
-        return
+        n_cells = self.df.shape[0]
+        power = len(str(n_cells)) + 1
+        print('Saving images...')
+        process_save_images(image=image,
+                            locations=self.locations,
+                            size=size,
+                            save_folder=self.path2img,
+                            truncation=truncation,
+                            pad=1000,
+                            verbose=False)

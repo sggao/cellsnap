@@ -25,9 +25,11 @@ def get_cell_idx_partition(df):
     return partition
 
 
-def add_cell_locations(
-        df, path_to_segmentation, shape_of_views=(9, 7), shape_of_each_view=(1008, 1344), verbose=True
-):
+def add_cell_locations(df,
+                       path_to_segmentation,
+                       shape_of_views=(9, 7),
+                       shape_of_each_view=(1008, 1344),
+                       verbose=True):
     """
     Add three new columns to df: location coordinates (x, y) as well as which FOV is each cell in.
     """
@@ -39,12 +41,16 @@ def add_cell_locations(
     for view_j in range(shape_of_views[1]):
         for view_i in range(shape_of_views[0]):
             view = view_j * shape_of_views[0] + view_i + 1
-            topleft = [view_i * shape_of_each_view[0], view_j * shape_of_each_view[1]]
+            topleft = [
+                view_i * shape_of_each_view[0], view_j * shape_of_each_view[1]
+            ]
             if verbose:
-                print("Now at field of view {}, top-left coordinate is {}".format(view, topleft), flush=True)
+                print("Now at field of view {}, top-left coordinate is {}".
+                      format(view, topleft),
+                      flush=True)
             seg = scipy.io.loadmat(
-                '{}point{}/nuclCD45_1.6_mpp0.8/segmentationParams.mat'.format(path_to_segmentation, view)
-            )['newLmod']
+                '{}point{}/nuclCD45_1.6_mpp0.8/segmentationParams.mat'.format(
+                    path_to_segmentation, view))['newLmod']
             # get unique labels, excluding zero
             unique_seg_labels = list(np.unique(seg.flatten()))[1:]
             # calculate centroids
@@ -55,13 +61,17 @@ def add_cell_locations(
             seg_label_to_x = {}
             seg_label_to_y = {}
             for i in range(len(props)):
-                seg_label_to_x[unique_seg_labels[i]] = props[i]['centroid'][0] + topleft[0]
-                seg_label_to_y[unique_seg_labels[i]] = props[i]['centroid'][1] + topleft[1]
+                seg_label_to_x[unique_seg_labels[
+                    i]] = props[i]['centroid'][0] + topleft[0]
+                seg_label_to_y[unique_seg_labels[
+                    i]] = props[i]['centroid'][1] + topleft[1]
             # fill the centroids of this segment of df
             start, end = partition[view - 1]
             for i in range(start, end + 1):
-                centroid_x.append(seg_label_to_x[df.iloc[i]['cellLabelInImage']])
-                centroid_y.append(seg_label_to_y[df.iloc[i]['cellLabelInImage']])
+                centroid_x.append(
+                    seg_label_to_x[df.iloc[i]['cellLabelInImage']])
+                centroid_y.append(
+                    seg_label_to_y[df.iloc[i]['cellLabelInImage']])
                 cell_views.append(view)
     # add new columns
     df['centroid_x'] = centroid_x
@@ -76,46 +86,68 @@ def select_useful_features(img, channels=('CD45', 'nucl')):
     Finally return an np array of shape (1008, 1344, len(channels))
     """
     features = [
-        'CD45',
-        'Ly6C',
-        'TCR',
-        'Ly6G',
-        'CD19',
-        'CD169',
-        'CD106',
-        'CD3',
-        'CD1632',
-        'CD8a',
-        'CD90',
-        'F480',
-        'CD11c',
-        'Ter119',
-        'CD11b',
-        'IgD',
-        'CD27',
-        'CD5',
-        'CD79b',
-        'CD71',
-        'CD31',
-        'CD4',
-        'IgM',
-        'B220',
-        'ERTR7',
-        'MHCII',
-        'CD35',
-        'CD2135',
-        'CD44',
-        'nucl',
-        'NKp46'
+        'CD45', 'Ly6C', 'TCR', 'Ly6G', 'CD19', 'CD169', 'CD106', 'CD3',
+        'CD1632', 'CD8a', 'CD90', 'F480', 'CD11c', 'Ter119', 'CD11b', 'IgD',
+        'CD27', 'CD5', 'CD79b', 'CD71', 'CD31', 'CD4', 'IgM', 'B220', 'ERTR7',
+        'MHCII', 'CD35', 'CD2135', 'CD44', 'nucl', 'NKp46'
     ]
     feature_to_idx = {f: i for i, f in enumerate(features)}
     indices = [feature_to_idx[f] for f in channels]
-    img = np.concatenate(
-        [img[0, :, :, :],
-         np.array([img[i, :, :, j] for i in range(1, 14) for j in range(1, 3)]).transpose((1, 2, 0)),
-         img[16, :, :, 2][:, :, np.newaxis],
-         img[17, :, :, 1][:, :, np.newaxis]
-        ],
-        axis=2
-    )
+    img = np.concatenate([
+        img[0, :, :, :],
+        np.array([img[i, :, :, j] for i in range(1, 14)
+                  for j in range(1, 3)]).transpose((1, 2, 0)),
+        img[16, :, :, 2][:, :, np.newaxis], img[17, :, :, 1][:, :, np.newaxis]
+    ],
+                         axis=2)
     return img[:, :, indices]
+
+
+def process_save_images(image,
+                        locations,
+                        size,
+                        save_folder,
+                        truncation,
+                        pad=1000,
+                        verbose=False):
+    pad_image = np.zeros(
+        (image.shape[0] + 2 * pad, image.shape[1] + 2 * pad, image.shape[2]))
+    pad_image[pad:pad_image.shape[0] + pad,
+              pad:pad_image.shape[1] + pad, :] = pad_image
+    truncate = np.quantile(pad_image, q=trun_qr, axis=(0, 1))
+    truncate = truncate[None, None, :]
+
+    pad_image[pad_image <= truncate] = 0
+    pad_image[pad_image > truncate] = 1
+
+    n_cells = locations.shape[0]
+    power = len(str(n_cells)) + 1
+
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+
+    if verbose:
+        print("Processing each cell...and saving!", flush=True)
+    for i in tqdm(range(n_cell)):
+        # process each cell
+        center_x = locations[i][0]
+        center_y = locations[i][1]
+        cur_image = np.transpose(
+            pad_image[(int(center_x) - size // 2 + pad):(int(center_x) +
+                                                         size // 2 + pad),
+                      (int(center_y) - size // 2 + pad):(int(center_y) +
+                                                         size // 2 + pad), :],
+            (2, 0, 1)).astype(np.int8)
+        assert (cur_image.shape == (2, size, size))
+        if verbose:
+            if i % 10000 == 1:
+                plt.imshow(cur_image[0, :, :])
+                plt.show()
+                plt.imshow(cur_image[1, :, :])
+                plt.show()
+
+        np.save(file=os.path.join(save_folder, f"size{size}", "images",
+                                  f"img_{i:0{power}d}"),
+                arr=cur_image)
+
+    return
