@@ -89,8 +89,10 @@ def robust_svd(arr, n_components, randomized=False, n_runs=1):
         best_err = float('inf')
         u, s, vh = None, None, None
         for _ in range(n_runs):
-            curr_u, curr_s, curr_vh = randomized_svd(arr, n_components=n_components, random_state=None)
-            curr_err = np.sum((arr - curr_u @ np.diag(curr_s) @ curr_vh) ** 2)
+            curr_u, curr_s, curr_vh = randomized_svd(arr,
+                                                     n_components=n_components,
+                                                     random_state=None)
+            curr_err = np.sum((arr - curr_u @ np.diag(curr_s) @ curr_vh)**2)
             if curr_err < best_err:
                 best_err = curr_err
                 u, s, vh = curr_u, curr_s, curr_vh
@@ -98,7 +100,8 @@ def robust_svd(arr, n_components, randomized=False, n_runs=1):
     else:
         if n_runs > 1:
             warnings.warn("Doing deterministic SVD, n_runs reset to one.")
-        u, s, vh = svds(arr*1.0, k=n_components) # svds can not handle integer values
+        u, s, vh = svds(arr * 1.0,
+                        k=n_components)  # svds can not handle integer values
     return u, s, vh
 
 
@@ -122,7 +125,10 @@ def svd_denoise(arr, n_components=20, randomized=False, n_runs=1):
     """
     if n_components is None:
         return arr
-    u, s, vh = robust_svd(arr, n_components=n_components, randomized=randomized, n_runs=n_runs)
+    u, s, vh = robust_svd(arr,
+                          n_components=n_components,
+                          randomized=randomized,
+                          n_runs=n_runs)
     return u @ np.diag(s) @ vh
 
 
@@ -146,6 +152,8 @@ def svd_embedding(arr, n_components=20, randomized=False, n_runs=1):
     """
     if n_components is None:
         return arr
-    u, s, vh = robust_svd(arr, n_components=n_components, randomized=randomized, n_runs=n_runs)
+    u, s, vh = robust_svd(arr,
+                          n_components=n_components,
+                          randomized=randomized,
+                          n_runs=n_runs)
     return u @ np.diag(s)
-

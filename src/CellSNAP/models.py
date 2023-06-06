@@ -4,7 +4,8 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 
 
-class SNAP_GNN_simple(nn.Module):
+class simple_SNAP_GNN(nn.Module):
+
     def __init__(self, input_dim, fc_dim, latent_dim, out_dim):
         super().__init__()
         self.fc = nn.Linear(in_features=input_dim, out_features=fc_dim)
@@ -23,14 +24,21 @@ class SNAP_GNN_simple(nn.Module):
 
 
 class SNAP_GNN(nn.Module):
-    def __init__(
-            self, feature_input_dim=32, feature_latent_dim=24,
-            img_input_dim=32, img_latent_dim=8, gnn_latent_dim=32, out_dim=20
-    ):
+
+    def __init__(self,
+                 feature_input_dim=32,
+                 feature_latent_dim=24,
+                 img_input_dim=32,
+                 img_latent_dim=8,
+                 gnn_latent_dim=32,
+                 out_dim=20):
         super().__init__()
-        self.img_encoder = nn.Linear(in_features=img_input_dim, out_features=img_latent_dim)
-        self.feature_encoder = nn.Linear(in_features=feature_input_dim, out_features=feature_latent_dim)
-        self.gnn_conv1 = GCNConv(feature_latent_dim+img_latent_dim, gnn_latent_dim)
+        self.img_encoder = nn.Linear(in_features=img_input_dim,
+                                     out_features=img_latent_dim)
+        self.feature_encoder = nn.Linear(in_features=feature_input_dim,
+                                         out_features=feature_latent_dim)
+        self.gnn_conv1 = GCNConv(feature_latent_dim + img_latent_dim,
+                                 gnn_latent_dim)
         self.gnn_conv2 = GCNConv(gnn_latent_dim, out_dim)
 
     def gnn_encoder(self, feature, img, edge_index):
