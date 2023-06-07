@@ -18,7 +18,8 @@ class SNAP_Dataset(Dataset):
                  feature_neighbor=15,
                  pca_components=25,
                  features_list=None,
-                 path2img=None):
+                 path2img=None,
+                 use_transform=False):
         """
         Form dataset of spatial single-cell data
         Parameters
@@ -51,6 +52,7 @@ class SNAP_Dataset(Dataset):
         self.pca_components = pca_components
         self.features_list = features_list
         self.path2img = path2img
+        self.use_transform = use_transform
 
     def __len__(self):
         return self.labels.shape[0]

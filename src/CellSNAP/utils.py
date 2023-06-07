@@ -157,3 +157,41 @@ def svd_embedding(arr, n_components=20, randomized=False, n_runs=1):
                           randomized=randomized,
                           n_runs=n_runs)
     return u @ np.diag(s)
+
+def get_optimizer_and_scheduler(
+        parameters,
+        OptimizerAlg='Adam', optimizer_kwargs=None,
+        SchedulerAlg='StepLR', scheduler_kwargs=None
+):
+    if SchedulerAlg == "StepLR":
+        SchedulerAlg = optim.lr_scheduler.StepLR
+    elif SchedulerAlg == "MultiStepLR":
+        SchedulerAlg = optim.lr_scheduler.MultiStepLR
+    else:
+        SchedulerAlg = None
+
+    if OptimizerAlg == "SGD":
+        OptimizerAlg = optim.SGD
+    elif OptimizerAlg == "Adadelta":
+        OptimizerAlg = optim.Adadelta
+    elif OptimizerAlg == "Adam":
+        OptimizerAlg = optim.Adam
+    elif OptimizerAlg == "RMSprop":
+        OptimizerAlg = optim.RMSprop
+    else:
+        raise NotImplementedError
+
+    if optimizer_kwargs is not None:
+        optimizer = OptimizerAlg(parameters, **optimizer_kwargs)
+    else:
+        optimizer = OptimizerAlg(parameters)
+
+    if scheduler_kwargs is not None:
+        scheduler = SchedulerAlg(optimizer, **scheduler_kwargs)
+    else:
+        if SchedulerAlg:
+            scheduler = SchedulerAlg(optimizer)
+        else:
+            scheduler = None
+
+    return optimizer, scheduler
