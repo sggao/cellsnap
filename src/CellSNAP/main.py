@@ -57,7 +57,7 @@ def main():
                              pca_components=25,
                              features_list=features_list,
                              path2img='../../../data/tutorial/codex_murine/processed_images')
-
+    # prepare meta data
     murine_dataset.initialize("centroid_x", "centroid_y", "cluster.termV2")
     shape_of_each_view = (1008, 1344)
     shape_of_views = (9, 7)
@@ -76,7 +76,7 @@ def main():
                 )
             image[view_i*shape_of_each_view[0]:(view_i+1)*shape_of_each_view[0],
                     view_j*shape_of_each_view[1]:(view_j+1)*shape_of_each_view[1],:] = select_useful_features(img, channels)
-
+    # prepare images
     size = 512
     truncation = 0.8
     murine_dataset.prepare_images(image,
@@ -92,6 +92,7 @@ def main():
                             cnn_model=True,
                             cnn_latent_dim=128,
                             gnn_latent_dim=32)
+    # Load pretrained SNAP-CNN embedding
     murine_cellsnap.cnn_embedding = np.load('../../data/codex_murine/results/SNAP_CNN_embedding.npy')
     murine_cellsnap.fit_snap_gnn(learning_rate=1e-3,
                              n_epochs=5000,
