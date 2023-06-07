@@ -37,6 +37,8 @@ class SNAP_Dataset(Dataset):
             list of feature names to be extracted from df
         path2img : str, optional
             path to images (to be saved)
+        use_transform : bool
+            indicate whether to use data augmentation
 
         """
 
@@ -58,7 +60,7 @@ class SNAP_Dataset(Dataset):
         return self.labels.shape[0]
 
     def __getitem__(self, index):
-        img = np.load(os.path.join(self.img_path, f"img_{index:05d}.npy"))
+        img = np.load(os.path.join(self.path2img, f"img_{index:05d}.npy"))
         if self.use_transform:
             img = self.transform(torch.Tensor(img))
         labels = self.labels[index]

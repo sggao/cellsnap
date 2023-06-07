@@ -155,7 +155,7 @@ class CellSNAP:
         self.gnn_model.to(device)
         self.gnn_model.train()
         cnn_embedding = torch.from_numpy(self.cnn_embedding).float().to(
-            args.device)
+            self.device)
         for e in range(1, 1 + n_epochs):
             if self.cnn_model != None:
                 predicted_nbhd = self.gnn_model(x=features,
@@ -209,8 +209,9 @@ class CellSNAP:
                       sche=None,
                       sche_kwargs=None,
                       gnn_print=10,
-                      verbose=True):
-        if cnn_model:
+                      verbose=True,
+                      path2result=None):
+        if self.cnn_model:
             self.fit_snap_cnn(self,
                               batch_size=cnn_batch_size,
                               learning_rate=cnn_learning_rate,
@@ -221,7 +222,9 @@ class CellSNAP:
                               SchedulerAlg=sche,
                               scheduler_kwargs=sche_kwargs,
                               print_every=cnn_print)
-        fit_snap_gnn(self,
+            self.pred_cnn_embedding(self, batch_size=512, path2result=path2result)
+
+        self.fit_snap_gnn(self,
                      learning_rate=gnn_learning_rate,
                      n_epochs=gnn_epochs,
                      loss_fn=gnn_loss_fn,
