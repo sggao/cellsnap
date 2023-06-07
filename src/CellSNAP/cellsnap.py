@@ -9,6 +9,9 @@ import graph
 import preprocessing
 import anndata as ad
 import scanpy as sc
+from models import *
+import torch.optim as optim
+from matplotlib import pyplot as plt
 
 
 class CellSNAP:
@@ -24,12 +27,15 @@ class CellSNAP:
         self.output_dim = self.dataset.cell_nbhd.shape[1]
         self.gnn_latent_dim = gnn_latent_dim
         self.cnn_latent_dim = cnn_latent_dim
+        self.cnn_model = cnn_model
         if self.cnn_model:
             self.cnn_model = SNAP_CNN(cnn_latent_dim, self.output_dim)
-            self.gnn_model = SNAP_GNN(gnn_latent_dim, self.output_dim)
+            self.gnn_model = SNAP_GNN(dataset.features.shape[1],
+                                      cnn_latent_dim, gnn_latent_dim,
+                                      self.output_dim)
         else:
-            self.gnn_model = SNAP_GNN_simple(gnn_latent_dim,
-                                             self.cnn_latent_dim,
+            self.gnn_model = simple_SNAP_GNN(dataset.features.shape[1],
+                                             self.gnn_latent_dim,
                                              self.output_dim)
         return
 
@@ -43,8 +49,9 @@ class CellSNAP:
                      SchedulerAlg=None,
                      scheduler_kwargs=None,
                      print_every=10):
-        print('\nTraining convolutional neural network============\n',
-              flush=True)
+        print(
+            '\n=============Training convolutional neural network============\n',
+            flush=True)
         # enable data augmentation
         self.dataset.use_transform = True
         dataloader = torch.utils.data.DataLoader(self.dataset,
@@ -60,11 +67,11 @@ class CellSNAP:
         else:
             raise NotImplementedError
 
-        self.cnn_model.to(self.device)
-        optimizer, scheduler = get_optimizer_and_scheduler(
+        self.cnn_model = self.cnn_model.to(self.device)
+        optimizer, scheduler = utils.get_optimizer_and_scheduler(
             self.cnn_model.parameters(), OptimizerAlg, optimizer_kwargs,
             SchedulerAlg, scheduler_kwargs)
-        criterion.to(device)
+        criterion.to(self.device)
         self.cnn_model.train()
         for epoch in range(1, 1 +
                            n_epochs):  # loop over the dataset multiple times
@@ -89,13 +96,17 @@ class CellSNAP:
                 if scheduler:
                     scheduler.step()
 
-                # print statistics
                 running_loss += loss.item() * inputs.shape[0]
                 running_sample += inputs.shape[0]
-            if epoch % print_every == 0:  # print every 2000 mini-batches
+                if i % 100 == 99:
+                    print(
+                        f'===Epoch {epoch}, Step {i + 1:5d} loss: {running_loss / running_sample:.6f}==='
+                    )
+
+            if epoch % print_every == 0:
                 print(
-                    f'===Epoch {epoch}, Step {i + 1:5d} loss: {running_loss / running_sample:.6f}==='
-                )
+                    f'===Epoch {epoch}, Step {i + 1:5d} loss: {running_loss / running_sample:.6f}===',
+                    flush=True)
 
         return
 
@@ -109,17 +120,18 @@ class CellSNAP:
         self.cnn_model.eval()
         self.cnn_embedding = np.zeros(
             (self.dataset.df.shape[0], self.cnn_latent_dim))
+        start_idx = 0
         with torch.no_grad():
             for data in testloader:
                 inputs, labels = data
-                inputs = inputs.to(device).to(torch.float32)
+                inputs = inputs.to(self.device).to(torch.float32)
                 outputs = self.cnn_model.cnn_encoder(inputs)
                 self.cnn_embedding[start_idx:start_idx +
                                    inputs.shape[0]] = outputs.cpu()
 
                 start_idx += inputs.shape[0]
         assert (start_idx == self.dataset.df.shape[0])
-        print('\nSave CNN Embedding!============\n', flush=True)
+        print('\n=====Save CNN Embedding!============\n', flush=True)
         if path2result:
             if not os.path.exists(path2result):
                 os.makedirs(path2result)
@@ -138,8 +150,8 @@ class CellSNAP:
                      verbose=True):
         features = torch.from_numpy(self.dataset.features).float().to(
             self.device)
-        feature_edges = self.feature_edges
-        edge_index = torch.from_numpy(np.array(feature_edges[:2])).long().to(
+        features_edges = self.dataset.feature_edges
+        edge_index = torch.from_numpy(np.array(features_edges[:2])).long().to(
             self.device)
         cell_nbhd = torch.from_numpy(self.dataset.cell_nbhd).float().to(
             self.device)
@@ -151,13 +163,17 @@ class CellSNAP:
             criterion = nn.CrossEntropyLoss()
         else:
             raise NotImplementedError
-        criterion.to(device)
-        self.gnn_model.to(device)
+        criterion.to(self.device)
+        self.gnn_model.to(self.device)
+        optimizer, scheduler = utils.get_optimizer_and_scheduler(
+            self.gnn_model.parameters(), OptimizerAlg, optimizer_kwargs,
+            SchedulerAlg, scheduler_kwargs)
         self.gnn_model.train()
-        cnn_embedding = torch.from_numpy(self.cnn_embedding).float().to(
-            self.device)
+        if self.cnn_model:
+            cnn_embedding = torch.from_numpy(self.cnn_embedding).float().to(
+                self.device)
         for e in range(1, 1 + n_epochs):
-            if self.cnn_model != None:
+            if self.cnn_model:
                 predicted_nbhd = self.gnn_model(x=features,
                                                 cnn_embed=cnn_embedding,
                                                 edge_index=edge_index)
@@ -165,7 +181,7 @@ class CellSNAP:
                 predicted_nbhd = self.gnn_model(x=features,
                                                 edge_index=edge_index)
             # Compute prediction error
-            loss = criterion(predicted_nbhd, train_nbhd)
+            loss = criterion(predicted_nbhd, cell_nbhd)
             # Backpropagation
             optimizer.zero_grad()
             loss.backward()
@@ -182,16 +198,16 @@ class CellSNAP:
                     f'===Epoch {e}, the training loss is {curr_train_loss:>0.8f}==',
                     flush=True)
 
-        print('\nSave CellSNAP Embedding!============\n', flush=True)
-        model.eval()
+        print('\n=========Save CellSNAP Embedding!============\n', flush=True)
+        self.gnn_model.eval()
         with torch.no_grad():
-            if self.cnn_model != None:
-                self.embedding = self.gnn_model(x=features,
-                                                cnn_embed=cnn_embedding,
-                                                edge_index=edge_index)
+            if self.cnn_model:
+                self.embedding = self.gnn_model.gnn_encoder(
+                    x=features, cnn_embed=cnn_embedding,
+                    edge_index=edge_index).detach().cpu().numpy()
             else:
-                self.embedding = self.gnn_model(x=features,
-                                                edge_index=edge_index)
+                self.embedding = self.gnn_model.gnn_encoder(
+                    x=features, edge_index=edge_index).detach().cpu().numpy()
 
         return
 
@@ -222,25 +238,28 @@ class CellSNAP:
                               SchedulerAlg=sche,
                               scheduler_kwargs=sche_kwargs,
                               print_every=cnn_print)
-            self.pred_cnn_embedding(self, batch_size=512, path2result=path2result)
+            self.pred_cnn_embedding(self,
+                                    batch_size=512,
+                                    path2result=path2result)
 
         self.fit_snap_gnn(self,
-                     learning_rate=gnn_learning_rate,
-                     n_epochs=gnn_epochs,
-                     loss_fn=gnn_loss_fn,
-                     OptimizerAlg=optim,
-                     optimizer_kwargs=optim_kwargs,
-                     SchedulerAlg=sche,
-                     scheduler_kwargs=sche_kwargs,
-                     print_every=cnn_print,
-                     verbose=verbose)
+                          learning_rate=gnn_learning_rate,
+                          n_epochs=gnn_epochs,
+                          loss_fn=gnn_loss_fn,
+                          OptimizerAlg=optim,
+                          optimizer_kwargs=optim_kwargs,
+                          SchedulerAlg=sche,
+                          scheduler_kwargs=sche_kwargs,
+                          print_every=cnn_print,
+                          verbose=verbose)
 
         return
 
     def visualize_umap(self, embedding, label):
         # visualization of umap of the embedding
         adata = ad.AnnData(embedding)
-        feature_adata.obs['annotation'] = list(label)
+        sc.pp.scale(adata)
+        adata.obs['annotation'] = list(label)
         sc.tl.pca(adata, svd_solver='arpack')
         sc.pp.neighbors(adata, n_neighbors=10)
         sc.tl.umap(adata)

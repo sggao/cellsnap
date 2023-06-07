@@ -4,6 +4,7 @@ from sklearn.utils.extmath import randomized_svd
 from scipy.sparse.linalg import svds
 import torch
 import random
+import torch.optim as optim
 
 
 def set_seed(seed=0):
@@ -158,11 +159,12 @@ def svd_embedding(arr, n_components=20, randomized=False, n_runs=1):
                           n_runs=n_runs)
     return u @ np.diag(s)
 
-def get_optimizer_and_scheduler(
-        parameters,
-        OptimizerAlg='Adam', optimizer_kwargs=None,
-        SchedulerAlg='StepLR', scheduler_kwargs=None
-):
+
+def get_optimizer_and_scheduler(parameters,
+                                OptimizerAlg='Adam',
+                                optimizer_kwargs=None,
+                                SchedulerAlg='StepLR',
+                                scheduler_kwargs=None):
     if SchedulerAlg == "StepLR":
         SchedulerAlg = optim.lr_scheduler.StepLR
     elif SchedulerAlg == "MultiStepLR":

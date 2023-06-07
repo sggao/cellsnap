@@ -53,7 +53,7 @@ class SNAP_GNN(nn.Module):
 
 class SNAP_CNN(nn.Module):
 
-    def __init__(self, output_dim):
+    def __init__(self, cnn_latent_dim, output_dim):
         super().__init__()
         self.conv1 = nn.Conv2d(2, 16, kernel_size=2, stride=2)
         self.pool = nn.MaxPool2d(2, 2)
@@ -64,8 +64,8 @@ class SNAP_CNN(nn.Module):
         self.conv6 = nn.Conv2d(256, 512, kernel_size=2, stride=1)
         self.fc1 = nn.Linear(2048, 1024)
         self.fc2 = nn.Linear(1024, 512)
-        self.fc3 = nn.Linear(512, 128)
-        self.fc4 = nn.Linear(128, output_dim)
+        self.fc3 = nn.Linear(512, cnn_latent_dim)
+        self.fc4 = nn.Linear(cnn_latent_dim, output_dim)
 
     def cnn_encoder(self, x):
         x = self.pool(F.relu(self.conv1(x)))

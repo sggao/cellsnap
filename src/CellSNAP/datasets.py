@@ -71,7 +71,7 @@ class SNAP_Dataset(Dataset):
                    cent_y,
                    celltype,
                    resolution=1.0,
-                   cluster=None, 
+                   cluster=None,
                    n_runs=1,
                    resolution_tol=0.05):
         """
@@ -110,18 +110,12 @@ class SNAP_Dataset(Dataset):
         locations = self.df[[cent_x, cent_y]].to_numpy()
         self.locations = locations
         self.spatial_knn_indices = graph.get_spatial_knn_indices(
-            locations=locations,
-            n_neighbors=self.k,
-            method='kd_tree')
+            locations=locations, n_neighbors=self.k, method='kd_tree')
         self.cell_nbhd = utils.get_neighborhood_composition(
             knn_indices=self.spatial_knn_indices, labels=self.df[celltype])
+        self.labels = self.cell_nbhd
 
-    def prepare_images(self,
-                       image,
-                       size,
-                       truncation,
-                       pad=1000,
-                       verbose=False):
+    def prepare_images(self, image, size, truncation, pad=1000, verbose=False):
 
         n_cells = self.df.shape[0]
         power = len(str(n_cells))
