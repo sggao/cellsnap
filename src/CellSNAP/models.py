@@ -26,7 +26,11 @@ class simple_SNAP_GNN(nn.Module):
 
 class SNAP_GNN(nn.Module):
 
-    def __init__(self, feature_input_dim=32, cnn_latent_dim = 128, gnn_latent_dim=32, out_dim=20):
+    def __init__(self,
+                 feature_input_dim=32,
+                 cnn_latent_dim=128,
+                 gnn_latent_dim=32,
+                 out_dim=20):
         super().__init__()
         self.fc = nn.Linear(in_features=feature_input_dim,
                             out_features=gnn_latent_dim)
