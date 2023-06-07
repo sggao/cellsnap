@@ -17,7 +17,7 @@ from cellsnap import *
 
 def main():
     # pipeline for codex murine dataset
-    df = pd.read_csv('../data/codex_murine/features_and_metadata.csv', index_col = 0)
+    df = pd.read_csv('../../data/codex_murine/features_and_metadata.csv', index_col = 0)
     features_list = [
         'CD45',
         'Ly6C',
@@ -56,13 +56,13 @@ def main():
                              feature_neighbor=15,
                              pca_components=25,
                              features_list=features_list,
-                             path2img='../../data/tutorial/codex_murine/processed_images')
+                             path2img='../../../data/tutorial/codex_murine/processed_images')
 
     murine_dataset.initialize("centroid_x", "centroid_y", "cluster.termV2")
     shape_of_each_view = (1008, 1344)
     shape_of_views = (9, 7)
     channels=('CD45', 'nucl')
-    load_path = '../../data/codex_murine'
+    load_path = '../../../data/codex_murine'
 
     image = np.zeros((shape_of_each_view[0]*shape_of_views[0], 
                             shape_of_each_view[1]*shape_of_views[1], len(channels)))
@@ -92,17 +92,7 @@ def main():
                             cnn_model=True,
                             cnn_latent_dim=128,
                             gnn_latent_dim=32)
-    murine_cellsnap.fit_snap_cnn(
-                     batch_size=64,
-                     learning_rate=1e-4,
-                     n_epochs=300,
-                     loss_fn='MSELoss',
-                     OptimizerAlg='Adam',
-                     optimizer_kwargs=None,
-                     SchedulerAlg=None,
-                     scheduler_kwargs=None,
-                     print_every=1)
-    murine_cellsnap.pred_cnn_embedding(batch_size=512, path2result='../data/codex_murine/results')
+    murine_cellsnap.cnn_embedding = np.load('../../data/codex_murine/results/SNAP_CNN_embedding.npy')
     murine_cellsnap.fit_snap_gnn(learning_rate=1e-3,
                              n_epochs=5000,
                              loss_fn='MSELoss',
