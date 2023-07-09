@@ -17,6 +17,7 @@ class SNAP_Dataset(Dataset):
                  k=15,
                  feature_neighbor=15,
                  pca_components=25,
+                 fov_list=None,
                  features_list=None,
                  path2img=None,
                  use_transform=False):
@@ -26,7 +27,8 @@ class SNAP_Dataset(Dataset):
         ----------
 
         df : pandas dataframe
-            dataframe containing meta information: containing 'centroid_x', 'centroid_y'
+            dataframe containing meta information: require columns 'centroid_x', 'centroid_y'
+            also require column 'fov', indicating indices of the field of views (if contains more than 1 fov)
         k : int 
             number of neighboring cells in neighborhood composition vector, default 15
         feature_neighbor : int
@@ -55,6 +57,7 @@ class SNAP_Dataset(Dataset):
         self.features_list = features_list
         self.path2img = path2img
         self.use_transform = use_transform
+        self.fov_list = fov_list if fov_list else [0]
 
     def __len__(self):
         return self.labels.shape[0]
@@ -84,6 +87,7 @@ class SNAP_Dataset(Dataset):
             column of self.df, celltype column name
 
         """
+
         # create metadata for the dataset
         features = self.df[self.features_list].to_numpy()
         self.features = utils.center_scale(features)
@@ -107,22 +111,28 @@ class SNAP_Dataset(Dataset):
         self.df['feature_labels'] = self.feature_labels
 
         print('Calculating cell neighborhood composition matrix...')
-        locations = self.df[[cent_x, cent_y]].to_numpy()
-        self.locations = locations
-        self.spatial_knn_indices = graph.get_spatial_knn_indices(
-            locations=locations, n_neighbors=self.k, method='kd_tree')
-        self.cell_nbhd = utils.get_neighborhood_composition(
-            knn_indices=self.spatial_knn_indices, labels=self.df[celltype])
-        self.labels = self.cell_nbhd
+        self.locations = self.df[[cent_x, cent_y]].to_numpy()
+        # iterate over field of views
+        labels = np.array([])
+        for fov in self.fov_list:
+            sub_df = self.df[self.df['fov'] == fov]
+            locations = sub_df[[cent_x, cent_y]].to_numpy()
+            spatial_knn_indices = graph.get_spatial_knn_indices(
+                locations=locations, n_neighbors=self.k, method='kd_tree')
+            cell_nbhd = utils.get_neighborhood_composition(
+                knn_indices=self.spatial_knn_indices, labels=sub_df[celltype], full_labels=self.df[celltype])
+            labels = np.concatenate([labels, cell_nbhd], axis = 0) if labels.size else cell_nbhd
+        self.labels = labels
 
     def prepare_images(self, image, size, truncation, pad=1000, verbose=False):
 
         n_cells = self.df.shape[0]
         power = len(str(n_cells))
         print('Saving images...')
-        process_save_images(image=image,
+        process_save_images(images=images,
                             locations=self.locations,
                             size=size,
+                            fov_list=self.fov_list,
                             save_folder=self.path2img,
                             truncation=truncation,
                             pad=1000,

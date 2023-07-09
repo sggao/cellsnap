@@ -38,7 +38,7 @@ def drop_zero_variability_columns(arr, tol=1e-8):
     return arr[:, good_columns]
 
 
-def get_neighborhood_composition(knn_indices, labels):
+def get_neighborhood_composition(knn_indices, labels, full_labels = None):
     """
     Compute the composition of neighbors for each sample.
     Parameters
@@ -47,15 +47,21 @@ def get_neighborhood_composition(knn_indices, labels):
         Each row represents the knn of that sample
     labels: np.ndarray of shape (n_samples, )
         Cluster labels
+    full_labels: np.ndarray of shape (n_total_samples, )
+        Cluster labels for all field of views combined
 
     Returns
     -------
     comp: np.ndarray of shape (n_samples, n_neighbors)
         The composition (in proportion) of neighbors for each sample.
     """
+    
     labels = list(labels)
     n, k = knn_indices.shape
-    unique_clusters = np.sort(np.unique(labels))
+    if full_labels:
+        unique_clusters = np.sort(np.unique(full_labels))
+    else:
+        unique_clusters = np.sort(np.unique(labels))
     n_clusters = len(unique_clusters)
     label_to_clust_idx = {label: i for i, label in enumerate(unique_clusters)}
 
@@ -197,3 +203,4 @@ def get_optimizer_and_scheduler(parameters,
             scheduler = None
 
     return optimizer, scheduler
+

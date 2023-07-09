@@ -105,51 +105,57 @@ def select_useful_features(img, channels=('CD45', 'nucl')):
     return img[:, :, indices]
 
 
-def process_save_images(image,
+def process_save_images(images,
                         locations,
                         size,
+                        fov_list,
                         save_folder,
                         truncation,
                         pad=1000,
                         verbose=False):
-    pad_image = np.zeros(
-        (image.shape[0] + 2 * pad, image.shape[1] + 2 * pad, image.shape[2]))
-    pad_image[pad:image.shape[0] + pad,
-              pad:image.shape[1] + pad, :] = image
-    truncate = np.quantile(pad_image, q=truncation, axis=(0, 1))
-    truncate = truncate[None, None, :]
 
-    pad_image[pad_image <= truncate] = 0
-    pad_image[pad_image > truncate] = 1
+    img_idx = 0
+    for idx, fov in enumerate(fov_list):
+        image = images[idx]
+        pad_image = np.zeros(
+            (image.shape[0] + 2 * pad, image.shape[1] + 2 * pad, image.shape[2]))
+        pad_image[pad:image.shape[0] + pad,
+                pad:image.shape[1] + pad, :] = image
+        truncate = np.quantile(pad_image, q=truncation, axis=(0, 1))
+        truncate = truncate[None, None, :]
 
-    n_cells = locations.shape[0]
-    power = len(str(n_cells))
+        pad_image[pad_image <= truncate] = 0
+        pad_image[pad_image > truncate] = 1
 
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
+        n_cells = locations.shape[0]
+        power = len(str(n_cells))
 
-    if verbose:
-        print("Processing each cell...and saving!", flush=True)
-    for i in tqdm(range(n_cells)):
-        # process each cell
-        center_x = locations[i][0]
-        center_y = locations[i][1]
-        cur_image = np.transpose(
-            pad_image[(int(center_x) - size // 2 + pad):(int(center_x) +
-                                                         size // 2 + pad),
-                      (int(center_y) - size // 2 + pad):(int(center_y) +
-                                                         size // 2 + pad), :],
-            (2, 0, 1)).astype(np.int8)
-        assert (cur_image.shape == (2, size, size))
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
+
         if verbose:
-            if i % 10000 == 1:
-                plt.imshow(cur_image[0, :, :])
-                plt.show()
-                plt.imshow(cur_image[1, :, :])
-                plt.show()
+            print("Processing each cell...and saving!", flush=True)
+        for i in tqdm(range(n_cells)):
+            # process each cell
+            center_x = locations[img_idx][0]
+            center_y = locations[img_idx][1]
+            cur_image = np.transpose(
+                pad_image[(int(center_x) - size // 2 + pad):(int(center_x) +
+                                                            size // 2 + pad),
+                        (int(center_y) - size // 2 + pad):(int(center_y) +
+                                                            size // 2 + pad), :],
+                (2, 0, 1)).astype(np.int8)
+            assert (cur_image.shape == (2, size, size))
+            if verbose:
+                if i % 10000 == 1:
+                    plt.imshow(cur_image[0, :, :])
+                    plt.show()
+                    plt.imshow(cur_image[1, :, :])
+                    plt.show()
 
-        np.save(file=os.path.join(save_folder,
-                                  f"img_{i:0{power}d}"),
-                arr=cur_image)
+            np.save(file=os.path.join(save_folder,
+                                    f"img_{i:0{power}d}"),
+                    arr=cur_image)
+            img_idx += 1
 
     return
