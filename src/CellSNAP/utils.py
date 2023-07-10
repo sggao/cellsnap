@@ -55,10 +55,10 @@ def get_neighborhood_composition(knn_indices, labels, full_labels = None):
     comp: np.ndarray of shape (n_samples, n_neighbors)
         The composition (in proportion) of neighbors for each sample.
     """
-    
+
     labels = list(labels)
     n, k = knn_indices.shape
-    if full_labels:
+    if full_labels is not  None:
         unique_clusters = np.sort(np.unique(full_labels))
     else:
         unique_clusters = np.sort(np.unique(labels))

@@ -111,6 +111,7 @@ def process_save_images(images,
                         fov_list,
                         save_folder,
                         truncation,
+                        aggr=[[0], [1]],
                         pad=1000,
                         verbose=False):
 
@@ -127,7 +128,12 @@ def process_save_images(images,
         pad_image[pad_image <= truncate] = 0
         pad_image[pad_image > truncate] = 1
 
-        n_cells = locations.shape[0]
+        pad_image_sum = np.zeros([pad_image.shape[0], pad_image.shape[1], 2])
+        pad_image_sum[:, :, 0] = np.sum(pad_image[:, :, i] for i in aggr[0])
+        pad_image_sum[:, :, 1] = np.sum(pad_image[:, :, i] for i in aggr[1])
+
+        sub_location = locations[idx]
+        n_cells = sub_location.shape[0]
         power = len(str(n_cells))
 
         if not os.path.exists(save_folder):
@@ -137,10 +143,10 @@ def process_save_images(images,
             print("Processing each cell...and saving!", flush=True)
         for i in tqdm(range(n_cells)):
             # process each cell
-            center_x = locations[img_idx][0]
-            center_y = locations[img_idx][1]
+            center_x = sub_location[i][0]
+            center_y = sub_location[i][1]
             cur_image = np.transpose(
-                pad_image[(int(center_x) - size // 2 + pad):(int(center_x) +
+                pad_image_sum[(int(center_x) - size // 2 + pad):(int(center_x) +
                                                             size // 2 + pad),
                         (int(center_y) - size // 2 + pad):(int(center_y) +
                                                             size // 2 + pad), :],
