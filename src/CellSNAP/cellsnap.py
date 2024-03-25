@@ -21,22 +21,32 @@ class CellSNAP:
                  device,
                  cnn_model=None,
                  cnn_latent_dim=128,
-                 gnn_latent_dim=32):
+                 gnn_latent_dim=33,
+                 proj_dim=32,
+                 fc_out_dim=33,
+                 cnn_out_dim=11):
         self.dataset = dataset
         self.device = device
         self.output_dim = self.dataset.cell_nbhd.shape[1]
+        self.n_cell = self.dataset.cell_nbhd.shape[0]
         self.gnn_latent_dim = gnn_latent_dim
         self.cnn_latent_dim = cnn_latent_dim
+        self.embed_dim = fc_out_dim + cnn_out_dim
         self.cnn_model = cnn_model
         if self.cnn_model:
             self.cnn_model = SNAP_CNN(cnn_latent_dim, self.output_dim)
-            self.gnn_model = SNAP_GNN(dataset.features.shape[1],
-                                      cnn_latent_dim, gnn_latent_dim,
-                                      self.output_dim)
+            self.gnn_model = SNAP_GNN_DUO(
+                out_dim=self.output_dim,
+                feature_input_dim=dataset.features.shape[1],
+                cnn_input_dim=cnn_latent_dim,
+                gnn_latent_dim=gnn_latent_dim,
+                proj_dim=proj_dim,
+                fc_out_dim=fc_out_dim,
+                cnn_out_dim=cnn_out_dim)
         else:
-            self.gnn_model = simple_SNAP_GNN(dataset.features.shape[1],
-                                             self.gnn_latent_dim,
-                                             self.output_dim)
+            self.gnn_model = SNAP_GNN_LITE(out_dim=self.output_dim,
+                                           input_dim=dataset.features.shape[1],
+                                           gnn_latent_dim=self.gnn_latent_dim)
         return
 
     def fit_snap_cnn(self,
@@ -58,19 +68,14 @@ class CellSNAP:
                                                  batch_size=batch_size,
                                                  shuffle=True,
                                                  num_workers=1)
-        if loss_fn == 'MSELoss':
-            criterion = nn.MSELoss()
-        elif loss_fn == 'L1Loss':
-            criterion = nn.L1Loss()
-        elif loss_fn == 'CrossEntropyLoss':
-            criterion = nn.CrossEntropyLoss()
-        else:
-            raise NotImplementedError
+        criterion = getattr(nn, loss_fn, nn.MSELoss)()
 
         self.cnn_model = self.cnn_model.to(self.device)
         optimizer, scheduler = utils.get_optimizer_and_scheduler(
-            self.cnn_model.parameters(), OptimizerAlg, optimizer_kwargs,
-            SchedulerAlg, scheduler_kwargs)
+            self.cnn_model.parameters(), OptimizerAlg, {
+                'lr': learning_rate,
+                **optimizer_kwargs
+            }, SchedulerAlg, scheduler_kwargs)
         criterion.to(self.device)
         self.cnn_model.train()
         for epoch in range(1, 1 +
@@ -110,7 +115,7 @@ class CellSNAP:
 
         return
 
-    def pred_cnn_embedding(self, batch_size=512, path2result=None):
+    def get_cnn_embedding(self, batch_size=512, path2result=None):
         self.dataset.use_transform = False
         testloader = torch.utils.data.DataLoader(self.dataset,
                                                  batch_size=batch_size,
@@ -139,7 +144,7 @@ class CellSNAP:
                     self.cnn_embedding)
 
     def fit_snap_gnn(self,
-                     learning_rate=1e-3,
+                     learning_rate=1e-4,
                      n_epochs=3000,
                      loss_fn='MSELoss',
                      OptimizerAlg='Adam',
@@ -153,21 +158,16 @@ class CellSNAP:
         features_edges = self.dataset.feature_edges
         edge_index = torch.from_numpy(np.array(features_edges[:2])).long().to(
             self.device)
-        cell_nbhd = torch.from_numpy(self.dataset.cell_nbhd).float().to(
+        cell_nbhd = torch.from_numpy(self.dataset.dual_labels).float().to(
             self.device)
-        if loss_fn == 'MSELoss':
-            criterion = nn.MSELoss()
-        elif loss_fn == 'L1Loss':
-            criterion = nn.L1Loss()
-        elif loss_fn == 'CrossEntropyLoss':
-            criterion = nn.CrossEntropyLoss()
-        else:
-            raise NotImplementedError
+        criterion = getattr(nn, loss_fn, nn.MSELoss)()
         criterion.to(self.device)
         self.gnn_model.to(self.device)
         optimizer, scheduler = utils.get_optimizer_and_scheduler(
-            self.gnn_model.parameters(), OptimizerAlg, optimizer_kwargs,
-            SchedulerAlg, scheduler_kwargs)
+            self.gnn_model.parameters(), OptimizerAlg, {
+                'lr': learning_rate,
+                **optimizer_kwargs
+            }, SchedulerAlg, scheduler_kwargs)
         self.gnn_model.train()
         if self.cnn_model:
             cnn_embedding = torch.from_numpy(self.cnn_embedding).float().to(
@@ -202,13 +202,53 @@ class CellSNAP:
         self.gnn_model.eval()
         with torch.no_grad():
             if self.cnn_model:
-                self.embedding = self.gnn_model.gnn_encoder(
+                gnn_embedding = self.gnn_model.gnn_encoder(
                     x=features, cnn_embed=cnn_embedding,
                     edge_index=edge_index).detach().cpu().numpy()
             else:
-                self.embedding = self.gnn_model.gnn_encoder(
+                gnn_embedding = self.gnn_model.gnn_encoder(
                     x=features, edge_index=edge_index).detach().cpu().numpy()
 
+        return gnn_embedding
+
+    def get_snap_embedding(self,
+                           round=5,
+                           k=32,
+                           learning_rate=1e-4,
+                           n_epochs=3000,
+                           loss_fn='MSELoss',
+                           OptimizerAlg='Adam',
+                           optimizer_kwargs=None,
+                           SchedulerAlg=None,
+                           scheduler_kwargs=None,
+                           verbose=True):
+        """
+        Parameters
+        ----------
+
+        round : int
+            number of times to fit SNAP-GNN
+        k : int
+            dimension reduction on final outputs
+
+        """
+        dim = self.embed_dim
+        concat_embedding = np.zeros((self.n_cell, round * dim))
+        for i in range(round):
+            gnn_embedding = self.fit_snap_gnn(
+                learning_rate=learning_rate,
+                n_epochs=n_epochs,
+                loss_fn=loss_fn,
+                OptimizerAlg=OptimizerAlg,
+                optimizer_kwargs=optimizer_kwargs,
+                SchedulerAlg=SchedulerAlg,
+                scheduler_kwargs=scheduler_kwargs,
+                print_every=500,
+                verbose=verbose)
+            concat_embedding[:, i * dim:(i + 1) * dim] = gnn_embedding
+        Ue, Se, Vhe = np.linalg.svd(concat_embedding, full_matrices=False)
+        gnn_embedding = Ue[:, :k] @ np.diag(Se[:k])
+        self.snap_embedding = gnn_embedding
         return
 
     def fit_transform(self,
@@ -217,6 +257,8 @@ class CellSNAP:
                       cnn_epochs=300,
                       cnn_loss_fn='MSELoss',
                       cnn_print=10,
+                      round=5,
+                      k=32,
                       gnn_learning_rate=1e-3,
                       gnn_epochs=3000,
                       gnn_loss_fn='MSELoss',
@@ -224,7 +266,6 @@ class CellSNAP:
                       optim_kwargs=None,
                       sche=None,
                       sche_kwargs=None,
-                      gnn_print=10,
                       verbose=True,
                       path2result=None):
         if self.cnn_model:
@@ -238,22 +279,41 @@ class CellSNAP:
                               SchedulerAlg=sche,
                               scheduler_kwargs=sche_kwargs,
                               print_every=cnn_print)
-            self.pred_cnn_embedding(self,
-                                    batch_size=512,
-                                    path2result=path2result)
+            self.get_cnn_embedding(self,
+                                   batch_size=512,
+                                   path2result=path2result)
 
-        self.fit_snap_gnn(self,
-                          learning_rate=gnn_learning_rate,
-                          n_epochs=gnn_epochs,
-                          loss_fn=gnn_loss_fn,
-                          OptimizerAlg=optim,
-                          optimizer_kwargs=optim_kwargs,
-                          SchedulerAlg=sche,
-                          scheduler_kwargs=sche_kwargs,
-                          print_every=cnn_print,
-                          verbose=verbose)
+        self.get_snap_embedding(self,
+                                round=round,
+                                k=k,
+                                learning_rate=gnn_learning_rate,
+                                n_epochs=gnn_epochs,
+                                loss_fn=gnn_loss_fn,
+                                OptimizerAlg=optim,
+                                optimizer_kwargs=optim_kwargs,
+                                SchedulerAlg=sche,
+                                scheduler_kwargs=sche_kwargs,
+                                print_every=cnn_print,
+                                verbose=verbose)
 
         return
+    
+    def get_snap_clustering(self, neighbor=15, resolution=1.0):
+        # compute cell clustering based on SNAP embedding
+        feature_labels = self.dataset.feature_labels
+        embedding = self.snap_embedding
+        snap_adata = ad.AnnData(utils.drop_zero_variability_columns(embedding))
+        snap_adata.obs['input'] = feature_labels
+        sc.pp.scale(snap_adata)
+        sc.pp.neighbors(snap_adata, n_neighbors=neighbor, use_rep='X')
+        sc.tl.umap(snap_adata)
+        sc.tl.leiden(snap_adata, resolution=resolution)
+        # clean cluster
+        from utils import cluster_refine, clean_cluster
+        snap_refine = cluster_refine(label = snap_adata.obs['leiden'], label_ref=snap_adata.obs['input'])
+        snap_clean = clean_cluster(snap_refine)
+        self.snap_clustering = snap_clean
+        return 
 
     def visualize_umap(self, embedding, label):
         # visualization of umap of the embedding

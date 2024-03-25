@@ -5,6 +5,8 @@ from scipy.sparse.linalg import svds
 import torch
 import random
 import torch.optim as optim
+from scipy.stats import entropy
+
 
 
 def set_seed(seed=0):
@@ -204,3 +206,31 @@ def get_optimizer_and_scheduler(parameters,
 
     return optimizer, scheduler
 
+def cluster_refine(label, label_ref, entropy_threshold = 0.75, concen_threshold = 1, max_breaks = 3):
+    label_out = label.copy()
+    label_out.name = label_out.name + '-refined'
+    label_out = label_out.astype(str)
+    ll = np.unique(label)
+    for l in ll:
+        ref_l = label_ref[label == l]
+        ref_l_freq = ref_l.value_counts()
+        if entropy(ref_l_freq) > entropy_threshold:
+            for i in np.arange(max_breaks-1):
+                bb = label[label_ref == ref_l_freq.index[i]]
+                if entropy(bb.value_counts()) < concen_threshold:
+                    label_out[(label == l) & (label_ref == ref_l_freq.index[i])] = l + '-' + str(i)
+    
+    return label_out.astype('category')
+
+def clean_cluster(label):
+    ll = label.value_counts().index.to_list()
+    i = 0
+    dd = {}
+    for l in ll:
+        dd[l] = str(i)
+        i = i+1
+    res = []
+    for item in label:
+        t = dd[item]
+        res.append(t)
+    return res

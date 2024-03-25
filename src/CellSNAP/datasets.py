@@ -115,18 +115,31 @@ class SNAP_Dataset(Dataset):
         # iterate over field of views
         labels = np.array([])
         for fov in self.fov_list:
-            sub_df = self.df[self.df['fov'] == fov] if len(self.fov_list) != 1 else self.df
+            sub_df = self.df[self.df['fov'] == fov] if len(
+                self.fov_list) != 1 else self.df
             locations = sub_df[[cent_x, cent_y]].to_numpy()
             self.locations.append(locations)
             spatial_knn_indices = graph.get_spatial_knn_indices(
                 locations=locations, n_neighbors=self.k, method='kd_tree')
             cell_nbhd = utils.get_neighborhood_composition(
-                knn_indices=spatial_knn_indices, labels=sub_df[celltype], full_labels=self.df[celltype])
-            labels = np.concatenate([labels, cell_nbhd], axis = 0) if labels.size else cell_nbhd
-        self.cell_nbhd = labels
+                knn_indices=spatial_knn_indices,
+                labels=sub_df[celltype],
+                full_labels=self.df[celltype])
+            labels = np.concatenate([labels, cell_nbhd],
+                                    axis=0) if labels.size else cell_nbhd
         self.labels = labels
+        # create dual label for GNN
+        cell_label = pd.get_dummies(self.feature_labels)
+        dual_label = np.hstack([cell_label, self.labels])
+        self.dual_labels = dual_label
 
-    def prepare_images(self, image, size, truncation, aggr, pad=1000, verbose=False):
+    def prepare_images(self,
+                       image,
+                       size,
+                       truncation,
+                       aggr,
+                       pad=1000,
+                       verbose=False):
 
         n_cells = self.df.shape[0]
         power = len(str(n_cells))
