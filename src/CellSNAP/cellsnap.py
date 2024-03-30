@@ -27,11 +27,11 @@ class CellSNAP:
                  cnn_out_dim=11):
         self.dataset = dataset
         self.device = device
-        self.output_dim = self.dataset.cell_nbhd.shape[1]
-        self.n_cell = self.dataset.cell_nbhd.shape[0]
+        self.output_dim = self.dataset.labels.shape[1]
+        self.n_cell = self.dataset.dual_labels.shape[0]
         self.gnn_latent_dim = gnn_latent_dim
         self.cnn_latent_dim = cnn_latent_dim
-        self.embed_dim = fc_out_dim + cnn_out_dim
+        self.embed_dim = fc_out_dim + cnn_out_dim if cnn_model else gnn_latent_dim
         self.cnn_model = cnn_model
         if self.cnn_model:
             self.cnn_model = SNAP_CNN(cnn_latent_dim, self.output_dim)
@@ -148,15 +148,18 @@ class CellSNAP:
                      n_epochs=3000,
                      loss_fn='MSELoss',
                      OptimizerAlg='Adam',
-                     optimizer_kwargs=None,
+                     optimizer_kwargs={},
                      SchedulerAlg=None,
-                     scheduler_kwargs=None,
+                     scheduler_kwargs={},
                      print_every=500,
                      verbose=True):
         features = torch.from_numpy(self.dataset.features).float().to(
             self.device)
         features_edges = self.dataset.feature_edges
-        edge_index = torch.from_numpy(np.array(features_edges[:2])).long().to(
+        spatial_edges = self.dataset.spatial_edges
+        feat_edge_index = torch.from_numpy(np.array(features_edges[:2])).long().to(
+            self.device)
+        spatial_edge_index = torch.from_numpy(np.array(spatial_edges[:2])).long().to(
             self.device)
         cell_nbhd = torch.from_numpy(self.dataset.dual_labels).float().to(
             self.device)
@@ -174,12 +177,13 @@ class CellSNAP:
                 self.device)
         for e in range(1, 1 + n_epochs):
             if self.cnn_model:
-                predicted_nbhd = self.gnn_model(x=features,
-                                                cnn_embed=cnn_embedding,
-                                                edge_index=edge_index)
+                predicted_nbhd = self.gnn_model(feat=features,
+                                                spat=cnn_embedding,
+                                                feat_edge_index=feat_edge_index,
+                                                spat_edge_index=spatial_edge_index)
             else:
                 predicted_nbhd = self.gnn_model(x=features,
-                                                edge_index=edge_index)
+                                                edge_index=feat_edge_index)
             # Compute prediction error
             loss = criterion(predicted_nbhd, cell_nbhd)
             # Backpropagation
@@ -198,16 +202,16 @@ class CellSNAP:
                     f'===Epoch {e}, the training loss is {curr_train_loss:>0.8f}==',
                     flush=True)
 
-        print('\n=========Save CellSNAP Embedding!============\n', flush=True)
+        print('\n=========Get Current Round CellSNAP Embedding!============\n', flush=True)
         self.gnn_model.eval()
         with torch.no_grad():
             if self.cnn_model:
-                gnn_embedding = self.gnn_model.gnn_encoder(
-                    x=features, cnn_embed=cnn_embedding,
-                    edge_index=edge_index).detach().cpu().numpy()
+                gnn_embedding = self.gnn_model.encoder(
+                    feat=features, spat=cnn_embedding, feat_edge_index=feat_edge_index,
+                    spat_edge_index=spatial_edge_index).detach().cpu().numpy()
             else:
-                gnn_embedding = self.gnn_model.gnn_encoder(
-                    x=features, edge_index=edge_index).detach().cpu().numpy()
+                gnn_embedding = self.gnn_model.encoder(
+                    x=features, edge_index=feat_edge_index).detach().cpu().numpy()
 
         return gnn_embedding
 

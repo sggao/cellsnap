@@ -112,6 +112,7 @@ def process_save_images(images,
                         fov_list,
                         save_folder,
                         truncation,
+                        power=5, 
                         aggr=[[0], [1]],
                         pad=1000,
                         verbose=False):

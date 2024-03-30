@@ -12,13 +12,13 @@ class SNAP_GNN_LITE(nn.Module):
         self.gnn_conv1 = GCNConv(gnn_latent_dim, gnn_latent_dim)
         self.gnn_conv2 = GCNConv(gnn_latent_dim, out_dim * 2)
 
-    def gnn_encoder(self, x, edge_index):
+    def encoder(self, x, edge_index):
         x = F.relu(self.fc(x))
         x = self.gnn_conv1(x, edge_index)
         return x
 
     def forward(self, x, edge_index):
-        x = F.relu(self.gnn_encoder(x, edge_index))
+        x = F.relu(self.encoder(x, edge_index))
         x = self.gnn_conv2(x, edge_index)
         return x
 
@@ -38,7 +38,7 @@ class SNAP_GNN(nn.Module):
         self.gnn_conv1 = GCNConv(2 * gnn_latent_dim, gnn_latent_dim)
         self.gnn_conv2 = GCNConv(gnn_latent_dim, out_dim)
 
-    def gnn_encoder(self, x, cnn_embed, edge_index):
+    def encoder(self, x, cnn_embed, edge_index):
         cnn_feat = self.cnn_fc(cnn_embed)
         x = F.relu(torch.cat((self.fc(x), cnn_feat), dim=1))
         x = self.gnn_conv1(x, edge_index)

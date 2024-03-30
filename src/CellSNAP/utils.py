@@ -191,12 +191,12 @@ def get_optimizer_and_scheduler(parameters,
     else:
         raise NotImplementedError
 
-    if optimizer_kwargs is not None:
+    if optimizer_kwargs:
         optimizer = OptimizerAlg(parameters, **optimizer_kwargs)
     else:
         optimizer = OptimizerAlg(parameters)
 
-    if scheduler_kwargs is not None:
+    if scheduler_kwargs:
         scheduler = SchedulerAlg(optimizer, **scheduler_kwargs)
     else:
         if SchedulerAlg:

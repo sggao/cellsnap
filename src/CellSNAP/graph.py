@@ -212,3 +212,20 @@ def get_feature_edges(
     if verbose:
         print("Done!", flush=True)
     return rows, cols, vals
+
+
+def get_spatial_edges(
+        arr, n_neighbors=15, metric='euclidean', verbose=False
+):
+    
+    if verbose:
+        print("Constructing the graph...", flush=True)
+    # use scanpy functions to do the graph construction
+    adata = ad.AnnData(arr, dtype=np.float32)
+    sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=None, use_rep='X', metric=metric)
+
+    rows, cols = adata.obsp['connectivities'].nonzero()
+    vals = adata.obsp['connectivities'][(rows, cols)].A1
+    if verbose:
+        print("Done!", flush=True)
+    return rows, cols, vals
