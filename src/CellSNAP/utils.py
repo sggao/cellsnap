@@ -8,7 +8,6 @@ import torch.optim as optim
 from scipy.stats import entropy
 
 
-
 def set_seed(seed=0):
     torch.manual_seed(seed)
     random.seed(seed)
@@ -40,7 +39,7 @@ def drop_zero_variability_columns(arr, tol=1e-8):
     return arr[:, good_columns]
 
 
-def get_neighborhood_composition(knn_indices, labels, full_labels = None):
+def get_neighborhood_composition(knn_indices, labels, full_labels=None):
     """
     Compute the composition of neighbors for each sample.
     Parameters
@@ -60,7 +59,7 @@ def get_neighborhood_composition(knn_indices, labels, full_labels = None):
 
     labels = list(labels)
     n, k = knn_indices.shape
-    if full_labels is not  None:
+    if full_labels is not None:
         unique_clusters = np.sort(np.unique(full_labels))
     else:
         unique_clusters = np.sort(np.unique(labels))
@@ -173,23 +172,11 @@ def get_optimizer_and_scheduler(parameters,
                                 optimizer_kwargs=None,
                                 SchedulerAlg='StepLR',
                                 scheduler_kwargs=None):
-    if SchedulerAlg == "StepLR":
-        SchedulerAlg = optim.lr_scheduler.StepLR
-    elif SchedulerAlg == "MultiStepLR":
-        SchedulerAlg = optim.lr_scheduler.MultiStepLR
-    else:
-        SchedulerAlg = None
 
-    if OptimizerAlg == "SGD":
-        OptimizerAlg = optim.SGD
-    elif OptimizerAlg == "Adadelta":
-        OptimizerAlg = optim.Adadelta
-    elif OptimizerAlg == "Adam":
-        OptimizerAlg = optim.Adam
-    elif OptimizerAlg == "RMSprop":
-        OptimizerAlg = optim.RMSprop
-    else:
-        raise NotImplementedError
+    if SchedulerAlg is not None:
+        SchedulerAlg = getattr(optim.lr_scheduler, SchedulerAlg,
+                               optim.lr_scheduler.StepLR)
+    OptimizerAlg = getattr(optim, OptimizerAlg, optim.Adam)
 
     if optimizer_kwargs:
         optimizer = OptimizerAlg(parameters, **optimizer_kwargs)
@@ -206,7 +193,12 @@ def get_optimizer_and_scheduler(parameters,
 
     return optimizer, scheduler
 
-def cluster_refine(label, label_ref, entropy_threshold = 0.75, concen_threshold = 1, max_breaks = 3):
+
+def cluster_refine(label,
+                   label_ref,
+                   entropy_threshold=0.75,
+                   concen_threshold=1,
+                   max_breaks=3):
     label_out = label.copy()
     label_out.name = label_out.name + '-refined'
     label_out = label_out.astype(str)
@@ -215,12 +207,14 @@ def cluster_refine(label, label_ref, entropy_threshold = 0.75, concen_threshold 
         ref_l = label_ref[label == l]
         ref_l_freq = ref_l.value_counts()
         if entropy(ref_l_freq) > entropy_threshold:
-            for i in np.arange(max_breaks-1):
+            for i in np.arange(max_breaks - 1):
                 bb = label[label_ref == ref_l_freq.index[i]]
                 if entropy(bb.value_counts()) < concen_threshold:
-                    label_out[(label == l) & (label_ref == ref_l_freq.index[i])] = l + '-' + str(i)
-    
+                    label_out[(label == l) & (
+                        label_ref == ref_l_freq.index[i])] = l + '-' + str(i)
+
     return label_out.astype('category')
+
 
 def clean_cluster(label):
     ll = label.value_counts().index.to_list()
@@ -228,7 +222,7 @@ def clean_cluster(label):
     dd = {}
     for l in ll:
         dd[l] = str(i)
-        i = i+1
+        i = i + 1
     res = []
     for item in label:
         t = dd[item]

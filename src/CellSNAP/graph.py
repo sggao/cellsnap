@@ -31,12 +31,17 @@ def get_spatial_knn_indices(locations, n_neighbors=15, method='kd_tree'):
     assert n_neighbors <= locations.shape[0]
     # k-NN indices, may be asymmetric
     _, knn_indices = NearestNeighbors(
-        n_neighbors=n_neighbors, algorithm=method
-    ).fit(locations).kneighbors(locations)
+        n_neighbors=n_neighbors,
+        algorithm=method).fit(locations).kneighbors(locations)
     return knn_indices
 
 
-def leiden_clustering(n, edges, resolution=1, n_runs=1, seed=None, verbose=False):
+def leiden_clustering(n,
+                      edges,
+                      resolution=1,
+                      n_runs=1,
+                      seed=None,
+                      verbose=False):
     """
     Apply Leiden modularity maximization algorithm on the graph defined by edges and weights
     Parameters
@@ -69,41 +74,55 @@ def leiden_clustering(n, edges, resolution=1, n_runs=1, seed=None, verbose=False
         seed = None
         warnings.warn('n_runs > 1, seed is reset to None.')
 
-    partition_kwargs = {'n_iterations': -1, 'seed': seed,
-                        'resolution_parameter': resolution}
+    partition_kwargs = {
+        'n_iterations': -1,
+        'seed': seed,
+        'resolution_parameter': resolution
+    }
     if len(edges) > 2:
-        partition_kwargs['weights'] = np.array(g.es['weight']).astype(np.float64)
+        partition_kwargs['weights'] = np.array(g.es['weight']).astype(
+            np.float64)
 
     partition_type = leidenalg.RBConfigurationVertexPartition
 
     best_modularity = float('-inf')
     best_labels = None
     if verbose and n_runs > 1:
-        print('Running Leiden algorithm for {} times...'.format(n_runs), flush=True)
+        print('Running Leiden algorithm for {} times...'.format(n_runs),
+              flush=True)
     for _ in range(n_runs):
-        curr_part = leidenalg.find_partition(
-            graph=g, partition_type=partition_type,
-            **partition_kwargs
-        )
+        curr_part = leidenalg.find_partition(graph=g,
+                                             partition_type=partition_type,
+                                             **partition_kwargs)
         curr_modularity = curr_part.modularity
         if curr_modularity > best_modularity:
-            best_modularity, best_labels = curr_modularity, np.array(curr_part.membership)
+            best_modularity, best_labels = curr_modularity, np.array(
+                curr_part.membership)
 
     assert best_labels is not None
 
     if verbose:
         if n_runs > 1:
-            print('Best modularity among {} runs is {}.'.format(n_runs, best_modularity), flush=True)
+            print('Best modularity among {} runs is {}.'.format(
+                n_runs, best_modularity),
+                  flush=True)
         else:
             print('Modularity is {}.'.format(best_modularity), flush=True)
-        print('The label has {} distinct clusters.'.format(len(np.unique(best_labels))), flush=True)
+        print('The label has {} distinct clusters.'.format(
+            len(np.unique(best_labels))),
+              flush=True)
 
     return best_labels
 
 
-def graph_clustering(
-        n, edges, resolution=1, n_clusters=None, n_runs=1, resolution_tol=0.05, seed=None, verbose=False
-):
+def graph_clustering(n,
+                     edges,
+                     resolution=1,
+                     n_clusters=None,
+                     n_runs=1,
+                     resolution_tol=0.05,
+                     seed=None,
+                     verbose=False):
     """
     Cluster the graph defined by edges and weights using Leiden algorithm.
     Parameters
@@ -135,9 +154,12 @@ def graph_clustering(
     assert (resolution is not None) ^ (n_clusters is not None)
 
     def cluster_func(res, vb):
-        return leiden_clustering(
-            n=n, edges=edges, resolution=res, n_runs=n_runs, seed=seed, verbose=vb
-        )
+        return leiden_clustering(n=n,
+                                 edges=edges,
+                                 resolution=res,
+                                 n_runs=n_runs,
+                                 seed=seed,
+                                 verbose=vb)
 
     if resolution is not None:
         return cluster_func(resolution, verbose)
@@ -147,7 +169,9 @@ def graph_clustering(
         curr_labels = cluster_func(right, False)
         curr_n_clusters = len(np.unique(curr_labels))
         if verbose:
-            print('A resolution of {} gives {} clusters.'.format(right, curr_n_clusters), flush=True)
+            print('A resolution of {} gives {} clusters.'.format(
+                right, curr_n_clusters),
+                  flush=True)
         if curr_n_clusters == n_clusters:
             return curr_labels
         elif curr_n_clusters < n_clusters:
@@ -161,7 +185,9 @@ def graph_clustering(
         curr_labels = cluster_func(mid, False)
         curr_n_clusters = len(np.unique(curr_labels))
         if verbose:
-            print('A resolution of {} gives {} clusters.'.format(mid, curr_n_clusters), flush=True)
+            print('A resolution of {} gives {} clusters.'.format(
+                mid, curr_n_clusters),
+                  flush=True)
         if curr_n_clusters == n_clusters:
             return curr_labels
         elif curr_n_clusters > n_clusters:
@@ -171,10 +197,11 @@ def graph_clustering(
     return curr_labels
 
 
-def get_feature_edges(
-        arr, pca_components=None,
-        n_neighbors=15, metric='correlation', verbose=False
-):
+def get_feature_edges(arr,
+                      pca_components=None,
+                      n_neighbors=15,
+                      metric='correlation',
+                      verbose=False):
     """
     Compute k-nearest neighbors of data and return the UMAP graph.
     Parameters
@@ -203,9 +230,17 @@ def get_feature_edges(
     if pca_components is not None:
         sc.tl.pca(adata, n_comps=pca_components, svd_solver='arpack')
     if pca_components is not None:
-        sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=pca_components, use_rep='X_pca', metric=metric)
+        sc.pp.neighbors(adata,
+                        n_neighbors=n_neighbors,
+                        n_pcs=pca_components,
+                        use_rep='X_pca',
+                        metric=metric)
     else:
-        sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=None, use_rep='X', metric=metric)
+        sc.pp.neighbors(adata,
+                        n_neighbors=n_neighbors,
+                        n_pcs=None,
+                        use_rep='X',
+                        metric=metric)
 
     rows, cols = adata.obsp['connectivities'].nonzero()
     vals = adata.obsp['connectivities'][(rows, cols)].A1
@@ -214,15 +249,17 @@ def get_feature_edges(
     return rows, cols, vals
 
 
-def get_spatial_edges(
-        arr, n_neighbors=15, metric='euclidean', verbose=False
-):
-    
+def get_spatial_edges(arr, n_neighbors=15, metric='euclidean', verbose=False):
+
     if verbose:
         print("Constructing the graph...", flush=True)
     # use scanpy functions to do the graph construction
     adata = ad.AnnData(arr, dtype=np.float32)
-    sc.pp.neighbors(adata, n_neighbors=n_neighbors, n_pcs=None, use_rep='X', metric=metric)
+    sc.pp.neighbors(adata,
+                    n_neighbors=n_neighbors,
+                    n_pcs=None,
+                    use_rep='X',
+                    metric=metric)
 
     rows, cols = adata.obsp['connectivities'].nonzero()
     vals = adata.obsp['connectivities'][(rows, cols)].A1

@@ -33,20 +33,10 @@ class CellSNAP:
         self.cnn_latent_dim = cnn_latent_dim
         self.embed_dim = fc_out_dim + cnn_out_dim if cnn_model else gnn_latent_dim
         self.cnn_model = cnn_model
-        if self.cnn_model:
-            self.cnn_model = SNAP_CNN(cnn_latent_dim, self.output_dim)
-            self.gnn_model = SNAP_GNN_DUO(
-                out_dim=self.output_dim,
-                feature_input_dim=dataset.features.shape[1],
-                cnn_input_dim=cnn_latent_dim,
-                gnn_latent_dim=gnn_latent_dim,
-                proj_dim=proj_dim,
-                fc_out_dim=fc_out_dim,
-                cnn_out_dim=cnn_out_dim)
-        else:
-            self.gnn_model = SNAP_GNN_LITE(out_dim=self.output_dim,
-                                           input_dim=dataset.features.shape[1],
-                                           gnn_latent_dim=self.gnn_latent_dim)
+        self.proj_dim = proj_dim
+        self.fc_out_dim = fc_out_dim
+        self.cnn_out_dim = cnn_out_dim
+        
         return
 
     def fit_snap_cnn(self,
@@ -62,6 +52,7 @@ class CellSNAP:
         print(
             '\n=============Training convolutional neural network============\n',
             flush=True)
+        self.cnn_model = SNAP_CNN(self.cnn_latent_dim, self.output_dim)
         # enable data augmentation
         self.dataset.use_transform = True
         dataloader = torch.utils.data.DataLoader(self.dataset,
@@ -153,14 +144,27 @@ class CellSNAP:
                      scheduler_kwargs={},
                      print_every=500,
                      verbose=True):
+        if self.cnn_model:
+            self.gnn_model = SNAP_GNN_DUO(
+                out_dim=self.output_dim,
+                feature_input_dim=self.dataset.features.shape[1],
+                cnn_input_dim=self.cnn_latent_dim,
+                gnn_latent_dim=self.gnn_latent_dim,
+                proj_dim=self.proj_dim,
+                fc_out_dim=self.fc_out_dim,
+                cnn_out_dim=self.cnn_out_dim)
+        else:
+            self.gnn_model = SNAP_GNN_LITE(out_dim=self.output_dim,
+                                           input_dim=self.dataset.features.shape[1],
+                                           gnn_latent_dim=self.gnn_latent_dim)
         features = torch.from_numpy(self.dataset.features).float().to(
             self.device)
         features_edges = self.dataset.feature_edges
         spatial_edges = self.dataset.spatial_edges
-        feat_edge_index = torch.from_numpy(np.array(features_edges[:2])).long().to(
-            self.device)
-        spatial_edge_index = torch.from_numpy(np.array(spatial_edges[:2])).long().to(
-            self.device)
+        feat_edge_index = torch.from_numpy(np.array(
+            features_edges[:2])).long().to(self.device)
+        spatial_edge_index = torch.from_numpy(np.array(
+            spatial_edges[:2])).long().to(self.device)
         cell_nbhd = torch.from_numpy(self.dataset.dual_labels).float().to(
             self.device)
         criterion = getattr(nn, loss_fn, nn.MSELoss)()
@@ -177,10 +181,11 @@ class CellSNAP:
                 self.device)
         for e in range(1, 1 + n_epochs):
             if self.cnn_model:
-                predicted_nbhd = self.gnn_model(feat=features,
-                                                spat=cnn_embedding,
-                                                feat_edge_index=feat_edge_index,
-                                                spat_edge_index=spatial_edge_index)
+                predicted_nbhd = self.gnn_model(
+                    feat=features,
+                    spat=cnn_embedding,
+                    feat_edge_index=feat_edge_index,
+                    spat_edge_index=spatial_edge_index)
             else:
                 predicted_nbhd = self.gnn_model(x=features,
                                                 edge_index=feat_edge_index)
@@ -202,16 +207,20 @@ class CellSNAP:
                     f'===Epoch {e}, the training loss is {curr_train_loss:>0.8f}==',
                     flush=True)
 
-        print('\n=========Get Current Round CellSNAP Embedding!============\n', flush=True)
+        print('\n=========Get Current Round CellSNAP Embedding!============\n',
+              flush=True)
         self.gnn_model.eval()
         with torch.no_grad():
             if self.cnn_model:
                 gnn_embedding = self.gnn_model.encoder(
-                    feat=features, spat=cnn_embedding, feat_edge_index=feat_edge_index,
+                    feat=features,
+                    spat=cnn_embedding,
+                    feat_edge_index=feat_edge_index,
                     spat_edge_index=spatial_edge_index).detach().cpu().numpy()
             else:
                 gnn_embedding = self.gnn_model.encoder(
-                    x=features, edge_index=feat_edge_index).detach().cpu().numpy()
+                    x=features,
+                    edge_index=feat_edge_index).detach().cpu().numpy()
 
         return gnn_embedding
 
@@ -301,7 +310,7 @@ class CellSNAP:
                                 verbose=verbose)
 
         return
-    
+
     def get_snap_clustering(self, neighbor=15, resolution=1.0):
         # compute cell clustering based on SNAP embedding
         feature_labels = self.dataset.feature_labels
@@ -314,10 +323,11 @@ class CellSNAP:
         sc.tl.leiden(snap_adata, resolution=resolution)
         # clean cluster
         from utils import cluster_refine, clean_cluster
-        snap_refine = cluster_refine(label = snap_adata.obs['leiden'], label_ref=snap_adata.obs['input'])
+        snap_refine = cluster_refine(label=snap_adata.obs['leiden'],
+                                     label_ref=snap_adata.obs['input'])
         snap_clean = clean_cluster(snap_refine)
         self.snap_clustering = snap_clean
-        return 
+        return
 
     def visualize_umap(self, embedding, label):
         # visualization of umap of the embedding

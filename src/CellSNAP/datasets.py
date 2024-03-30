@@ -16,9 +16,10 @@ class SNAP_Dataset(Dataset):
                  df,
                  k=15,
                  feature_neighbor=15,
-                 spatial_neighbor=15, 
+                 spatial_neighbor=15,
                  pca_components=25,
-                 fov_list=None,
+                 feat_resolution=1.0,
+                 resolution_tol=0.05,
                  features_list=None,
                  path2img=None,
                  use_transform=False):
@@ -55,11 +56,12 @@ class SNAP_Dataset(Dataset):
         self.k = k
         self.feature_neighbor = feature_neighbor
         self.spatial_neighbor = spatial_neighbor
+        self.feat_resolution = feat_resolution
+        self.resolution_tol = resolution_tol
         self.pca_components = pca_components
         self.features_list = features_list
         self.path2img = path2img
         self.use_transform = use_transform
-        self.fov_list = fov_list if fov_list else [0]
 
     def __len__(self):
         return self.labels.shape[0]
@@ -71,14 +73,7 @@ class SNAP_Dataset(Dataset):
         labels = self.labels[index]
         return img, labels
 
-    def initialize(self,
-                   cent_x,
-                   cent_y,
-                   celltype,
-                   resolution=1.0,
-                   cluster=None,
-                   n_runs=1,
-                   resolution_tol=0.05):
+    def initialize(self, cent_x, cent_y, celltype, cluster=None, n_runs=1):
         """
         Parameters
         ----------
@@ -104,36 +99,34 @@ class SNAP_Dataset(Dataset):
         self.feature_labels = graph.graph_clustering(
             self.df.shape[0],
             self.feature_edges,
-            resolution=resolution,
+            resolution=self.feat_resolution,
             n_clusters=cluster,
             n_runs=n_runs,
-            resolution_tol=resolution_tol,
+            resolution_tol=self.resolution_tol,
             seed=None,
             verbose=False)
         self.df['feature_labels'] = self.feature_labels
 
         print('Calculating cell neighborhood composition matrix...')
-        self.locations = []
 
         locations = self.df[[cent_x, cent_y]].to_numpy()
-        self.locations.append(locations)
+        self.locations = locations
         spatial_knn_indices = graph.get_spatial_knn_indices(
             locations=locations, n_neighbors=self.k, method='kd_tree')
         cell_nbhd = utils.get_neighborhood_composition(
             knn_indices=spatial_knn_indices,
             labels=self.df[celltype],
             full_labels=self.df[celltype])
-        
+
         self.labels = cell_nbhd
         # create dual label for GNN
         cell_label = pd.get_dummies(self.feature_labels)
         dual_label = np.hstack([cell_label, self.labels])
         self.dual_labels = dual_label
-        
+
         # create spatial edges
         self.spatial_edges = graph.get_spatial_edges(
-                                arr=locations, n_neighbors=self.spatial_neighbor, verbose=True
-                            )
+            arr=locations, n_neighbors=self.spatial_neighbor, verbose=True)
 
     def prepare_images(self,
                        image,
@@ -149,10 +142,9 @@ class SNAP_Dataset(Dataset):
         process_save_images(images=image,
                             locations=self.locations,
                             size=size,
-                            fov_list=self.fov_list,
                             save_folder=self.path2img,
                             truncation=truncation,
-                            power=power, 
+                            power=power,
                             aggr=aggr,
                             pad=1000,
                             verbose=False)
