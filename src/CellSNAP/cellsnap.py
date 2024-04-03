@@ -25,6 +25,29 @@ class CellSNAP:
                  proj_dim=32,
                  fc_out_dim=33,
                  cnn_out_dim=11):
+        """
+        Initialize the CellSNAP object for model training.
+        Parameters
+        ----------
+
+        dataset : SNAP_Dataset object
+            Obtained from CellSNAP previous step (dataset preparation).
+        device : str
+            gpu or cpu device name.
+        cnn_model : bool
+            Default None, will implement CellSNAP without image morphology information.
+        cnn_latent_dim : int
+            Default 128. Latent dimension for SNAP-CNN model.
+        gnn_latent_dim : int
+            Default 33. Latent dimension for SNAP-GNN-duo model.
+        proj_dim : int
+            Default 32. Projection dimension for feature and CNN encoding inputs.
+        fc_out_dim : int
+            Default 33. Output dimension for feature-GNN and input to MLP head.
+        cnn_out_dim : int
+            Default 11. Output dimension for spatial-GNN and input to MLP head.
+        """
+
         self.dataset = dataset
         self.device = device
         self.output_dim = self.dataset.labels.shape[1]
@@ -49,6 +72,28 @@ class CellSNAP:
                      SchedulerAlg=None,
                      scheduler_kwargs=None,
                      print_every=10):
+        
+        """
+        Train SNAP-CNN to extract morphology encoding.
+        Parameters
+        ----------
+
+        batch_size : int
+            Batch size.
+        learning_rate : float
+            Learning rate.
+        n_epochs : int
+            Number of epochs to train.
+        loss_fn : str
+            Loss function name.
+        OptimizerAlg : str
+            Optimizer name.
+        SchedulerAlg : None
+        optimizer_kwargs : None
+        print_every : int
+            Log print frequency.
+        """
+
         print(
             '\n=============Training convolutional neural network============\n',
             flush=True)
@@ -107,6 +152,19 @@ class CellSNAP:
         return
 
     def get_cnn_embedding(self, batch_size=512, path2result=None):
+
+        """
+        Retrieve SNAP-CNN embedding (extracted morphology encoding).
+        Parameters
+        ----------
+
+        batch_size : int
+            Batch size.
+        path2result : str
+            Directory to save output.
+
+        """
+
         self.dataset.use_transform = False
         testloader = torch.utils.data.DataLoader(self.dataset,
                                                  batch_size=batch_size,
@@ -144,6 +202,17 @@ class CellSNAP:
                      scheduler_kwargs={},
                      print_every=500,
                      verbose=True):
+        """
+        Train SNAP-GNN-duo (or single SNAP-GNN model if morphology information is not provided).
+        Parameters
+        ----------
+
+        batch_size : int
+            Batch size.
+        path2result : str
+            Directory to save output.
+        """
+        
         if self.cnn_model:
             self.gnn_model = SNAP_GNN_DUO(
                 out_dim=self.output_dim,
@@ -236,13 +305,26 @@ class CellSNAP:
                            scheduler_kwargs=None,
                            verbose=True):
         """
+        Retrieve CellSNAP final embedding.
         Parameters
         ----------
 
-        round : int
-            number of times to fit SNAP-GNN
-        k : int
-            dimension reduction on final outputs
+        round: int
+            Number of rounds the model the SNAP-GNN-duo model is trained to achieve robust performance.
+        k: int
+            Default to 32. Final out embedding dimension value.
+        learning_rate : float
+            Learning rate.
+        n_epochs : int
+            Number of epochs to train.
+        loss_fn : str
+            Loss function name.
+        OptimizerAlg : str
+            Optimizer name.
+        SchedulerAlg : None
+        optimizer_kwargs : None
+        print_every : int
+            Log print frequency.
 
         """
         dim = self.embed_dim
@@ -281,6 +363,10 @@ class CellSNAP:
                       sche_kwargs=None,
                       verbose=True,
                       path2result=None):
+        """
+        Wrapper function.
+        """
+
         if self.cnn_model:
             self.fit_snap_cnn(self,
                               batch_size=cnn_batch_size,
@@ -312,6 +398,9 @@ class CellSNAP:
         return
 
     def get_snap_clustering(self, neighbor=15, resolution=1.0):
+
+        ##### need update here.
+
         # compute cell clustering based on SNAP embedding
         feature_labels = self.dataset.feature_labels
         embedding = self.snap_embedding
@@ -330,7 +419,19 @@ class CellSNAP:
         return
 
     def visualize_umap(self, embedding, label):
-        # visualization of umap of the embedding
+
+        """
+        Wrapped-up helper function to visualize (UMAP) the embedding.
+        Using scanpy functions and default setup.
+        Parameters
+        ----------
+
+        embedding : array
+            Embedding as input
+        label : array
+            Contains the meta information you want to visualize on the UMAP plot.
+        """
+
         adata = ad.AnnData(embedding)
         sc.pp.scale(adata)
         adata.obs['annotation'] = list(label)
