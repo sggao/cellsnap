@@ -5,7 +5,6 @@ import matplotlib.patches as mpatches
 import scipy
 import skimage
 import sys
-
 sys.path.append("../src/CellSNAP/")
 from utils import *
 import os
@@ -15,6 +14,9 @@ from preprocessing import *
 from datasets import *
 from cellsnap import *
 
+#############################
+# example code in this file #
+#############################
 
 def main():
     # pipeline for codex murine dataset

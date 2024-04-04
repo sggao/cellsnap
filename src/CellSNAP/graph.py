@@ -12,7 +12,6 @@ import utils
 def get_spatial_knn_indices(locations, n_neighbors=15, method='kd_tree'):
     """
     Compute k-nearest neighbors of locations.
-
     Parameters
     ----------
     locations: np.ndarray of shape (n_samples, 2)
@@ -250,6 +249,20 @@ def get_feature_edges(arr,
 
 
 def get_spatial_edges(arr, n_neighbors=15, metric='euclidean', verbose=False):
+
+    """
+    Produce the spatial adjacency edges that will be used in SNAP-GNN-duo spatial-GNN part.
+    Parameters
+    ----------
+    arr: np.array of shape (n_samples, 2)
+        Array matrix that contains each cell's spatial location.
+    n_neighbors: int
+        Number of neighbors desired to be consider as spatially adjacent.
+    metric: string, default='correlation'
+        Metric used when constructing the initial knn graph
+    verbose: bool, default=True
+        Whether to print progress
+    """
 
     if verbose:
         print("Constructing the graph...", flush=True)

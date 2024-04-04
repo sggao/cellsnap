@@ -28,21 +28,25 @@ class SNAP_Dataset(Dataset):
         Parameters
         ----------
 
-        df : pandas dataframe
-            dataframe containing meta information: require columns 'centroid_x', 'centroid_y'
-            also require column 'fov', indicating indices of the field of views (if contains more than 1 fov)
+        df : pandas dataframe containing information:
+            - feature expression values (eg protein or RNA values etc)
+            - 2D cell location information (x,y):
+                @ cell location need to be global in the case of multiple seperated FOV (eg TMAs) to avoid incorrect spatial
+                adjacency and neighborhood information.
+                @ if will be training SNAP-CNN (extracting morphology information from image files), the supplied 2D cell
+                location inforamtion should be consistent with the pixel locations of cell location in the input image files. 
         k : int 
-            number of neighboring cells in neighborhood composition vector, default 15
+            Number of neighboring cells in neighborhood composition vector, default 15
         feature_neighbor : int
-            number of neighbors in SNAP GNN
+            Number of neighbors to consider in SNAP GNN (feature similarity graph)
         pca_component : int
-            number of PCs in feature graph
+            Number of PCs used in feature graph. if 'None' no PCA reduction will be performed on the input feature profile
         features_list : list(str)
-            list of feature names to be extracted from df
+            List of feature names to be used in CellSNAP process
         path2img : str, optional
-            path to images (to be saved)
+            Path to images (to be saved, output from function '.prepare_images') if using images to extract morphological information (CNN step)
         use_transform : bool
-            indicate whether to use data augmentation
+            Indicate whether to use data augmentation if using images to extract morphological information (CNN step)
 
         """
 
@@ -73,15 +77,22 @@ class SNAP_Dataset(Dataset):
         labels = self.labels[index]
         return img, labels
 
-    def initialize(self, cent_x, cent_y, celltype, cluster=None, n_runs=1):
+    def initialize(self, cent_x, cent_y, celltype = 'feature_labels', cluster=None, n_runs=1):
         """
+        Initialize the class object by calculating:
+        -feature edges from similarity, used in SNAP-GNN
+        -feature labels from feature values (population identity), default by Leiden clustering (skip if supplied)
+        -neighborhood composition
+        -spatial adjacency related information
         Parameters
         ----------
 
         cent_x, cent_y : str
-            columns of self.df, location of center of each cell
+            Column names of self.df, which contains location of each cell
         celltype : str
-            column of self.df, celltype column name
+            Column of self.df, which contains the population identity of each cell.
+            defualt to 'feature_labels' which will run leiden clustering clustering 
+            and produce population identity of each cell. ******* need update???
 
         """
 
@@ -106,6 +117,9 @@ class SNAP_Dataset(Dataset):
             seed=None,
             verbose=False)
         self.df['feature_labels'] = self.feature_labels
+
+        print('Leiden clustering identified ' +
+               str(len(np.unique(self.feature_labels))) + ' clusters as input population identity.')
 
         print('Calculating cell neighborhood composition matrix...')
 
@@ -135,6 +149,27 @@ class SNAP_Dataset(Dataset):
                        aggr,
                        pad=1000,
                        verbose=False):
+        
+        """
+        Helper function takes input of a whole tissue iamge with nuclear and membrane channel.
+        Output individual cropped binarized images for each cell of their adjacent tissue information.
+        The images will be saved in the pre-specified saving directory in function '.SNAP_Dataset'.
+        Parameters
+        ----------
+
+        image: np.array with (H,W,2)
+            One tissue image file in the format of numpy array. Note the supplied x, y location of cells from
+            the initial df should be the same as their pixel location in this supplied image. two channels
+            corresponds to the membrane and nuclear channels.
+        size: int
+            Size of the cropped individual images for each cell.
+        truncation: float
+            Quantile value as threshold to binarize the input image.
+        aggr: list
+            Default not used
+        pad: int
+            Padding value around input image.
+        """
 
         n_cells = self.df.shape[0]
         power = len(str(n_cells))

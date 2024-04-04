@@ -172,6 +172,9 @@ def get_optimizer_and_scheduler(parameters,
                                 optimizer_kwargs=None,
                                 SchedulerAlg='StepLR',
                                 scheduler_kwargs=None):
+    """
+    Initialize  optimizer and scheduler for model training.
+    """
 
     if SchedulerAlg is not None:
         SchedulerAlg = getattr(optim.lr_scheduler, SchedulerAlg,
@@ -198,7 +201,25 @@ def cluster_refine(label,
                    label_ref,
                    entropy_threshold=0.75,
                    concen_threshold=1,
-                   max_breaks=3):
+                   max_breaks=3, 
+                   size_lim=50):
+    
+    """
+    Refine clustering results from CellSNAP embedding to make sure robustenss. If a cluster from CellSNAP result contains a high mixture of population defined by original input population identity (eg acquire from Leiden clustering on the feature similarity graph), this cluster will be futher refined to represent the best biological status.
+    Parameters
+    ----------
+    label: array
+        Contains the clustering numbers stored in anndata from scanpy Leiden clustering on the final CellSNAP embedding.
+    label_ref: array
+        Contains the cell population identity labels (either from initial Leiden clustering or user provided) which was used to calculate neighborhood composition etc.
+    entropy_threshold: float
+        Entropy threshold to decide whether to refine a certain cluster from CellSNAP result. Higher value means more sensitive to population mixing.
+    concen_threshold: float
+        Concentration threshold to decide whether to refine a certain cluster from CellSNAP result. Higher value means more sensitive to population mixing.
+    max_breaks: int
+        Maximum number of splits for refining a certain cluster from CellSNAP result. Higher value means more splits in a cluster is allowed.
+    """
+
     label_out = label.copy()
     label_out.name = label_out.name + '-refined'
     label_out = label_out.astype(str)
@@ -209,7 +230,7 @@ def cluster_refine(label,
         if entropy(ref_l_freq) > entropy_threshold:
             for i in np.arange(max_breaks - 1):
                 bb = label[label_ref == ref_l_freq.index[i]]
-                if entropy(bb.value_counts()) < concen_threshold:
+                if entropy(bb.value_counts()) < concen_threshold and ref_l_freq.iloc[i] >= size_lim:
                     label_out[(label == l) & (
                         label_ref == ref_l_freq.index[i])] = l + '-' + str(i)
 
@@ -217,6 +238,12 @@ def cluster_refine(label,
 
 
 def clean_cluster(label):
+    """
+    Helper function to clean up the cluster names from output returned by function 'cluster_refine()'.
+    Produced cluster numbers will be sorted based on population size.
+    Return new cleaned up cluster numbers.
+    """
+
     ll = label.value_counts().index.to_list()
     i = 0
     dd = {}

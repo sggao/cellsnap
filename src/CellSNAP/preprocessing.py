@@ -9,6 +9,87 @@ import os
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
+def process_save_images(images,
+                        locations,
+                        size,
+                        save_folder,
+                        truncation,
+                        power=5,
+                        aggr=[[0], [1]],
+                        pad=1000,
+                        verbose=False):
+    
+    """
+    Helper function to produce cropped images for each individual cells and same them out.
+    The save out images will be used in the SNAP-CNN process to extract morphology encoding.
+    Parameters
+    ----------
+    image: np.array with (H,W,2)
+        One tissue image file in the format of numpy array. Note the supplied x, y location of cells from
+        the initial df should be the same as their pixel location in this supplied image. Two channels
+        corresponds to the membrane and nuclear channels.
+    size: int
+        Size of the cropped individual images for each cell.
+    truncation: float
+        Quantile value as threshold to binarize the input image.
+    aggr: list
+        Default not used
+    pad: int
+        Padding value around input image.
+    """
+
+    img_idx = 0
+    image = images
+    pad_image = np.zeros(
+        (image.shape[0] + 2 * pad, image.shape[1] + 2 * pad, image.shape[2]))
+    pad_image[pad:image.shape[0] + pad, pad:image.shape[1] + pad, :] = image
+    truncate = np.quantile(pad_image, q=truncation, axis=(0, 1))
+    truncate = truncate[None, None, :]
+
+    pad_image[pad_image <= truncate] = 0
+    pad_image[pad_image > truncate] = 1
+
+    pad_image_sum = np.zeros([pad_image.shape[0], pad_image.shape[1], 2])
+    pad_image_sum[:, :, 0] = np.sum(pad_image[:, :, i] for i in aggr[0])
+    pad_image_sum[:, :, 1] = np.sum(pad_image[:, :, i] for i in aggr[1])
+
+    sub_location = locations
+    n_cells = sub_location.shape[0]
+    power = len(str(n_cells))
+
+    if not os.path.exists(save_folder):
+        os.makedirs(save_folder)
+
+    if verbose:
+        print("Processing each cell...and saving!", flush=True)
+    for i in tqdm(range(n_cells)):
+        # process each cell
+        center_x = sub_location[i][0]
+        center_y = sub_location[i][1]
+        cur_image = np.transpose(
+            pad_image_sum[(int(center_x) - size // 2 + pad):(int(center_x) +
+                                                             size // 2 + pad),
+                          (int(center_y) - size // 2 +
+                           pad):(int(center_y) + size // 2 + pad), :],
+            (2, 0, 1)).astype(np.int8)
+        assert (cur_image.shape == (2, size, size))
+        if verbose:
+            if i % 10000 == 1:
+                plt.imshow(cur_image[0, :, :])
+                plt.show()
+                plt.imshow(cur_image[1, :, :])
+                plt.show()
+
+        np.save(file=os.path.join(save_folder, f"img_{i:0{power}d}"),
+                arr=cur_image)
+        img_idx += 1
+
+    return
+
+
+########################################################################################
+#         Below is legacy functions not used in the actual CellSNAP pipeline.          #
+########################################################################################
 
 def get_cell_idx_partition(df):
     """
@@ -104,62 +185,3 @@ def select_useful_features(img, channels=('CD45', 'nucl')):
     ],
                          axis=2)
     return img[:, :, indices]
-
-
-def process_save_images(images,
-                        locations,
-                        size,
-                        save_folder,
-                        truncation,
-                        power=5,
-                        aggr=[[0], [1]],
-                        pad=1000,
-                        verbose=False):
-
-    img_idx = 0
-    image = images
-    pad_image = np.zeros(
-        (image.shape[0] + 2 * pad, image.shape[1] + 2 * pad, image.shape[2]))
-    pad_image[pad:image.shape[0] + pad, pad:image.shape[1] + pad, :] = image
-    truncate = np.quantile(pad_image, q=truncation, axis=(0, 1))
-    truncate = truncate[None, None, :]
-
-    pad_image[pad_image <= truncate] = 0
-    pad_image[pad_image > truncate] = 1
-
-    pad_image_sum = np.zeros([pad_image.shape[0], pad_image.shape[1], 2])
-    pad_image_sum[:, :, 0] = np.sum(pad_image[:, :, i] for i in aggr[0])
-    pad_image_sum[:, :, 1] = np.sum(pad_image[:, :, i] for i in aggr[1])
-
-    sub_location = locations
-    n_cells = sub_location.shape[0]
-    power = len(str(n_cells))
-
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
-
-    if verbose:
-        print("Processing each cell...and saving!", flush=True)
-    for i in tqdm(range(n_cells)):
-        # process each cell
-        center_x = sub_location[i][0]
-        center_y = sub_location[i][1]
-        cur_image = np.transpose(
-            pad_image_sum[(int(center_x) - size // 2 + pad):(int(center_x) +
-                                                             size // 2 + pad),
-                          (int(center_y) - size // 2 +
-                           pad):(int(center_y) + size // 2 + pad), :],
-            (2, 0, 1)).astype(np.int8)
-        assert (cur_image.shape == (2, size, size))
-        if verbose:
-            if i % 10000 == 1:
-                plt.imshow(cur_image[0, :, :])
-                plt.show()
-                plt.imshow(cur_image[1, :, :])
-                plt.show()
-
-        np.save(file=os.path.join(save_folder, f"img_{i:0{power}d}"),
-                arr=cur_image)
-        img_idx += 1
-
-    return

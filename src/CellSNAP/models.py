@@ -5,6 +5,11 @@ from torch_geometric.nn import GCNConv
 
 
 class SNAP_GNN_LITE(nn.Module):
+    """
+    Model class. Used when implementing single-SNAP-GNN model. LITE model means only doing CellSNAP
+    with feature and neighborhood information, no image morphology information used.
+    For more detail technical description of the model please refer to the CellSNAP manuscript.
+    """
 
     def __init__(self, input_dim, out_dim, gnn_latent_dim=32):
         super().__init__()
@@ -51,6 +56,11 @@ class SNAP_GNN(nn.Module):
 
 
 class SNAP_GNN_DUO(nn.Module):
+
+    """
+    Model class. Used when the full SNAP-GNN-duo model is used.
+    For more detail technical description of the model please refer to the CellSNAP manuscript.
+    """
 
     def __init__(self,
                  out_dim,
@@ -105,6 +115,11 @@ class SNAP_GNN_DUO(nn.Module):
 
 
 class SNAP_CNN(nn.Module):
+
+    """
+    Model class. SNAP-CNN model used for extracting tissue morphology information from images.
+    For more detail technical description of the model please refer to the CellSNAP manuscript.
+    """
 
     def __init__(self, cnn_latent_dim, output_dim):
         super().__init__()
