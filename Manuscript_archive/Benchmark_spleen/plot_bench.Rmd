@@ -1,0 +1,496 @@
+---
+title: "bench_plot"
+output: html_document
+---
+
+####  nbhd resolution construction
+
+```{r}
+metrics = read.csv("../data/CH_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/CH_nbres_0327.csv')
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('res0.2','res0.5','res0.7','res1','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p1 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark CH") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv) +
+  theme(legend.position = 'None')
+ggsave("../plots/benchres_ch_0327.svg", height = 3, width = 4)
+p1
+```
+
+
+```{r}
+metrics = read.csv("../data/SS_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/SS_nbres_0327.csv')
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('res0.2','res0.5','res0.7','res1','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p2 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark SS") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchres_ss_0327.svg", height = 3, width = 4)
+p2
+```
+
+
+```{r}
+metrics = read.csv("../data/DB_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/DB_nbres_0327.csv')
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('res0.2','res0.5','res0.7','res1','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p3 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark DB") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchres_db_0327.svg", height = 3, width = 4)
+p3
+```
+
+
+```{r}
+metrics = read.csv("../data/Mod_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/mod_nbres_0327.csv')
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('res0.2','res0.5','res0.7','res1','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p4 = ggplot(metrics_all,aes(x=res,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark mod") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/bench_modres_0327.svg", height = 3, width = 4)
+p4
+```
+
+
+```{r}
+library(patchwork)
+pp = wrap_plots(list(p1,p2,p3,p4), ncol = 4)
+ggsave('../plots/benchres_all_0327.svg', height = 3, width = 14)
+pp
+```
+
+
+
+
+
+
+
+####  nbhd k construction
+
+```{r}
+metrics = read.csv("../data/CH_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/CH_nbK_0327.csv')
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('k10','k20','k30','k40','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p1 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark CH") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv) +
+  theme(legend.position = 'None')
+ggsave("../plots/benchK_ch_0327.svg", height = 3, width = 4)
+p1
+```
+
+
+```{r}
+metrics = read.csv("../data/SS_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/SS_nbK_0327.csv')
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('k10','k20','k30','k40','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p2 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark SS") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchK_ss_0327.svg", height = 3, width = 4)
+p2
+```
+
+
+```{r}
+metrics = read.csv("../data/DB_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/DB_nbK_0327.csv')
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('k10','k20','k30','k40','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p3 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark DB") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchk_db_0327.svg", height = 3, width = 4)
+p3
+```
+
+
+```{r}
+metrics = read.csv("../data/Mod_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/Mod_nbK_0327.csv')
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('k10','k20','k30','k40','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p4 = ggplot(metrics_all,aes(x=res,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark mod") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/bench_modK_0327.svg", height = 3, width = 4)
+p4
+```
+
+
+```{r}
+library(patchwork)
+pp = wrap_plots(list(p1,p2,p3,p4), ncol = 4)
+ggsave('../plots/benchK_all_0327.svg', height = 3, width = 14)
+pp
+```
+
+
+
+
+#### img size
+
+```{r}
+metrics = read.csv("../data/CH_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/CH_imgsize_0327.csv')
+metrics_ben$variable = as.character(metrics_ben$variable)
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('256','512','1024','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p1 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark CH") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv) +
+  theme(legend.position = 'None')
+ggsave("../plots/benchimgsize_ch_0327.svg", height = 3, width = 4)
+p1
+```
+
+
+```{r}
+metrics = read.csv("../data/SS_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/SS_imgsize_0327.csv')
+metrics_ben$variable = as.character(metrics_ben$variable)
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('256','512','1024','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p2 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark SS") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchimgsize_ss_0327.svg", height = 3, width = 4)
+p2
+```
+
+
+```{r}
+metrics = read.csv("../data/DB_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/DB_imgsize_0327.csv')
+metrics_ben$variable = as.character(metrics_ben$variable)
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('256','512','1024','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p3 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark DB") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchimgsize_db_0327.svg", height = 3, width = 4)
+p3
+```
+
+
+```{r}
+metrics = read.csv("../data/Mod_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/Mod_imgsize_0327.csv')
+metrics_ben$variable = as.character(metrics_ben$variable)
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('256','512','1024','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p4 = ggplot(metrics_all,aes(x=res,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark mod") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchimgsize_mod_0327.svg", height = 3, width = 4)
+p4
+```
+
+
+```{r}
+library(patchwork)
+pp = wrap_plots(list(p1,p2,p3,p4), ncol = 4)
+ggsave('../plots/benchimgsize_all_0327.svg', height = 3, width = 14)
+pp
+```
+
+
+
+
+
+
+#### img alpha
+
+```{r}
+metrics = read.csv("../data/CH_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/CH_imgA_0327.csv')
+metrics_ben$variable = as.character(metrics_ben$variable)
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('a0.6','a0.7','a0.8','a0.9','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p1 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark CH") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv) +
+  theme(legend.position = 'None')
+ggsave("../plots/benchimgA_ch_0327.svg", height = 3, width = 4)
+p1
+```
+
+
+```{r}
+metrics = read.csv("../data/SS_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/SS_imgA_0327.csv')
+metrics_ben$variable = as.character(metrics_ben$variable)
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('a0.6','a0.7','a0.8','a0.9','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p2 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark SS") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchimgA_ss_0327.svg", height = 3, width = 4)
+p2
+```
+
+
+```{r}
+metrics = read.csv("../data/DB_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/DB_imgA_0327.csv')
+metrics_ben$variable = as.character(metrics_ben$variable)
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('a0.6','a0.7','a0.8','a0.9','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p3 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark DB") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchimgA_db_0327.svg", height = 3, width = 4)
+p3
+```
+
+
+```{r}
+metrics = read.csv("../data/Mod_result_spleen_0327.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/Mod_imgA_0327.csv')
+metrics_ben$variable = as.character(metrics_ben$variable)
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('a0.6','a0.7','a0.8','a0.9','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p4 = ggplot(metrics_all,aes(x=res,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark mod") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)+
+  theme(legend.position = 'None')
+ggsave("../plots/benchimgA_mod_0327.svg", height = 3, width = 4)
+p4
+```
+
+
+```{r}
+library(patchwork)
+pp = wrap_plots(list(p1,p2,p3,p4), ncol = 4)
+ggsave('../plots/benchimgA_all_0327.svg', height = 3, width = 14)
+pp
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########## example for legend
+
+
+```{r}
+metrics = read.csv("../data/CH_result_spleen.csv") # metrics prev calced
+metrics = subset(metrics, metrics$variable %in% c('ch_concact', 'ch_feature', 'ch_spice'))
+metrics_ben = read.csv('../data/bench/CH_nbres.csv')
+metrics_all = rbind(metrics, metrics_ben)
+
+## prep for plotting
+metrics_all$alpha = 1
+metrics_all$alpha[metrics_all$variable %in% c('ch_concact', 'ch_feature', 'ch_spice')] = 0.3
+
+colorv = c("#F9D923","#74E291","#59B4C3","#211C6A",'lightgrey','lightgrey','lightgrey')
+names(colorv) = c('res0.2','res0.5','res0.7','res1','ch_concact', 'ch_feature', 'ch_spice')
+# CH
+
+p1 = ggplot(metrics_all,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Benchmark CH") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)
+ggsave("../plots/legend.svg", height = 3, width = 4)
+p1
+```

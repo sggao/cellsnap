@@ -1,0 +1,323 @@
+---
+title: "tonsil_plot"
+output: html_document
+---
+
+```{r}
+ssnap = read.csv('../data/double_snap_combo_stable_binVer_0325.csv')
+ssnap$X = NULL # first row is rnum
+colnames(ssnap) = paste0('PC_', rep(1:ncol(ssnap)))
+rownames(ssnap) = paste0('cell_', rep(1:nrow(ssnap)))
+
+library(Seurat)
+snp <- CreateSeuratObject(counts = t(ssnap), assay = "cnp")
+SetAssayData(object = snp, slot = "data", new.data =t(ssnap), assay="cnp")
+snp <- ScaleData(snp) 
+snp<- RunPCA(snp, features = rownames(snp))
+snp <-  FindNeighbors(snp, dims = 1:30)
+
+# umap plotting
+snp <- RunUMAP(snp, dims = 1:30)
+```
+
+```{r}
+df_meta = read.csv('../data/save_tonsil_ann_0325.csv') # saved out ann file
+snp@meta.data$snap_label = df_meta$snap_label_res1
+p1 <- DimPlot(snp, label = TRUE, repel = TRUE, label.size = 5,
+              group.by = 'snap_label', raster = FALSE) + NoLegend()
+p1
+```
+
+```{r}
+library(Polychrome)
+set.seed(42)
+P26 = createPalette(26,  c("#010101", "#ff0000"), M=1000)
+P26_re = P26[sample(length(P26), length(P26))]
+swatch(P26_re)
+```
+
+### save out
+
+```{r}
+embd = data.frame(umap1 = snp@reductions$umap@cell.embeddings[,1],
+                  umap2 = snp@reductions$umap@cell.embeddings[,2],
+                  label = as.character(df_meta$snap_label_res1))
+
+names(P26_re) = c('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11',
+                '12', '13', '14', '15', '16', '17', '18', '19', '20', '21',
+                '22', '23', '24', '25')
+
+library(ggplot2)
+p1 = ggplot(embd)  + 
+  geom_point(aes(x=umap1, y=umap2, color=label,size = 2,stroke = 0), cex = 0.5) +
+  labs( x = "tsne 1", y = "tsne 2") + theme_classic() + ggtitle("sr") +
+  scale_color_manual(values = P26_re)
+ggsave("../plots/umap_tonsil_snap_0327.png",p1,height = 6, width = 7.8)
+p1
+```
+
+########## looks good, work on the feature only version
+
+```{r}
+feat = read.csv('../data/save_tonsil_ann_0325.csv')
+feat = feat[,c(5:50)]
+#colnames(ssnap) = paste0('PC_', rep(1:ncol(ssnap)))
+rownames(feat) = paste0('cell_', rep(1:nrow(feat)))
+
+library(Seurat)
+featt <- CreateSeuratObject(counts = t(feat), assay = "cnp")
+SetAssayData(object = featt, slot = "data", new.data =t(feat), assay="cnp")
+featt <- ScaleData(featt) 
+featt<- RunPCA(featt, features = rownames(featt))
+featt <-  FindNeighbors(featt, dims = 1:30)
+
+# umap plotting
+featt <- RunUMAP(featt, dims = 1:30)
+```
+
+
+```{r}
+featt@meta.data$feat_label = df_meta$feature_label_res1
+p1 <- DimPlot(featt, label = TRUE, repel = TRUE, label.size = 5, group.by = 'feat_label') + NoLegend()
+p1
+```
+
+
+```{r}
+embd = data.frame(umap1 = featt@reductions$umap@cell.embeddings[,1],
+                  umap2 = featt@reductions$umap@cell.embeddings[,2],
+                  label = as.character(df_meta$feature_label_res1))
+
+library(ggplot2)
+p1 = ggplot(embd)  + 
+  geom_point(aes(x=umap1, y=umap2, color=label,size = 2,stroke = 0), cex = 0.5) +
+  labs( x = "tsne 1", y = "tsne 2") + theme_classic() + ggtitle("sr") +
+  scale_color_manual(values = P26_re)
+ggsave("../plots/umap_tonsil_feat_0325.png",p1,height = 6, width = 7.8)
+p1
+```
+
+
+####### now our goal is too look at non-gc replicating cells
+
+
+```{r}
+df_meta$snap_label_res1_ann2 = as.character(df_meta$snap_label_res1_ann)
+df_meta$snap_label_res1_ann2[df_meta$snap_label_res1 %in% c(6,8)] = 'gcB'
+df_meta$snap_label_res1_ann2[df_meta$snap_label_res1 %in% c(15,17)] = 'stromal b'
+df_meta$snap_label_res1_ann2[df_meta$snap_label_res1 %in% c(10)] = 'replicating'
+
+###
+ssnapb = subset(ssnap, df_meta$snap_label_res1_ann2 %in% c('B', 'gcB','replicating','stromal b'))
+df_metab = subset(df_meta, df_meta$snap_label_res1_ann2 %in% c('B', 'gcB','replicating','stromal b'))
+
+library(Seurat)
+snpb <- CreateSeuratObject(counts = t(ssnapb), assay = "cnp")
+SetAssayData(object = snpb, slot = "data", new.data =t(ssnapb), assay="cnp")
+snpb <- ScaleData(snpb) 
+snpb<- RunPCA(snpb, features = rownames(snpb))
+snpb <-  FindNeighbors(snpb, dims = 1:30)
+# umap plotting
+snpb <- RunUMAP(snpb, dims = 1:30)
+```
+
+### save out
+
+```{r}
+embdb = data.frame(umap1 = snpb@reductions$umap@cell.embeddings[,1],
+                  umap2 = snpb@reductions$umap@cell.embeddings[,2],
+                  label = as.character(df_metab$snap_label_res1_ann2))
+
+library(ggplot2)
+p1 = ggplot(embdb)  + 
+  geom_point(aes(x=umap1, y=umap2, color=label,size = 3,stroke = 0), cex = 1) +
+  labs( x = "tsne 1", y = "tsne 2") + theme_classic() + ggtitle("sr") +
+  scale_color_manual(values = c("B" = "#A8E890",
+                                "gcB" = "#BFACE2",
+                                "replicating" = "#FC2947",
+                                "stromal b" = "#387ADF")) 
+ggsave("../plots/umap_tonsil_snap_compareB_0327.png",p1,height = 6, width = 6.5)
+p1
+```
+
+```{r}
+### 
+embdb = data.frame(umap1 = snpb@reductions$umap@cell.embeddings[,1],
+                  umap2 = snpb@reductions$umap@cell.embeddings[,2],
+                  label = as.character(df_metab$snap_label_res1))
+
+library(ggplot2)
+p1 = ggplot(embdb)  + 
+  geom_point(aes(x=umap1, y=umap2, color=label,size = 3,stroke = 0), cex = 1) +
+  labs( x = "tsne 1", y = "tsne 2") + theme_classic() + ggtitle("sr") +
+  scale_color_manual(values = P26_re) 
+ggsave("../plots/umap_tonsil_snap_compareB_snapres1lab_0327.png",p1,height = 6, width = 6.5)
+p1
+```
+
+
+####### impose these clusters on the feature embedding
+
+
+```{r}
+###
+featb = subset(feat, df_meta$snap_label_res1_ann2 %in% c('B', 'gcB', 'replicating', 'stromal b'))
+#df_metab = subset(df_meta, df_meta$snap_label_res1_ann %in% c('B', 'gcB', 'non-gc replicating cell'))
+
+library(Seurat)
+feattb <- CreateSeuratObject(counts = t(featb), assay = "cnp")
+SetAssayData(object = feattb, slot = "data", new.data =t(featb), assay="cnp")
+feattb <- ScaleData(feattb) 
+feattb<- RunPCA(feattb, features = rownames(feattb))
+feattb <-  FindNeighbors(feattb, dims = 1:30)
+# umap plotting
+feattb <- RunUMAP(feattb, dims = 1:30)
+```
+
+### save out
+
+```{r}
+# color by annotation
+embdb = data.frame(umap1 = feattb@reductions$umap@cell.embeddings[,1],
+                  umap2 = feattb@reductions$umap@cell.embeddings[,2],
+                  label = as.character(df_metab$snap_label_res1_ann2))
+
+library(ggplot2)
+p1 = ggplot(embdb)  + 
+  geom_point(aes(x=umap1, y=umap2, color=label,size = 3,stroke = 0), cex = 1) +
+  labs( x = "tsne 1", y = "tsne 2") + theme_classic() + ggtitle("sr") +
+  scale_color_manual(values = c("B" = "#A8E890",
+                                "gcB" = "#BFACE2",
+                                "replicating" = "#FC2947",
+                                "stromal b" = "#387ADF")) 
+ggsave("../plots/umap_tonsil_feat_compareB_0327.png",p1,height = 6, width = 6.5)
+p1
+```
+
+```{r}
+# color by cluster
+### 
+embdb = data.frame(umap1 = feattb@reductions$umap@cell.embeddings[,1],
+                  umap2 = feattb@reductions$umap@cell.embeddings[,2],
+                  label = as.character(df_metab$feature_label_res1))
+
+library(ggplot2)
+p1 = ggplot(embdb)  + 
+  geom_point(aes(x=umap1, y=umap2, color=label,size = 3,stroke = 0), cex = 1) +
+  labs( x = "tsne 1", y = "tsne 2") + theme_classic() + ggtitle("sr") +
+  scale_color_manual(values = P26_re) 
+ggsave("../plots/umap_tonsil_compareB_featres1_0327.png",p1,height = 6, width = 6.5)
+p1
+```
+
+######### looks good, plot out location of cells
+
+```{r}
+plotdf_inc = data.frame(ll = df_meta$snap_label_res1_ann2,
+                    x = df_meta$centroid_x,
+                    y = df_meta$centroid_y
+                    )
+plotdf_inc$ll_clean = "None"
+plotdf_inc$ll_clean[plotdf_inc$ll == "replicating"] = "replicating"
+plotdf_inc$ll_clean[plotdf_inc$ll == "stromal b"] = "stromal b"
+plotdf_inc$ll_clean[plotdf_inc$ll == "gcB"] = "gcB"
+plotdf_inc$ll_clean[plotdf_inc$ll == "B"] = "B"
+
+plotdf_inc$size = 0.4
+plotdf_inc$stroke = 0.4
+
+plotdf_inc$stroke[plotdf_inc$ll_clean == "replicating"] = 1
+plotdf_inc$size[plotdf_inc$ll_clean == "replicating"] = 1
+
+group.colors <- c( "gcB" = "#8F43EE",
+                   "B" = "#79D70F",
+                   "replicating" = "#FC2947",
+                   "stromal b" = "#387ADF",
+                   "None" = "#FFFFFF00")
+
+p = ggplot(plotdf_inc) +
+    geom_point(aes(x = x, y = y, color = ll_clean),
+               size = plotdf_inc$size, stroke = plotdf_inc$stroke) + theme_classic() +
+    theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.margin = unit(c(0.0001,0.0001,0.0001,0.0001), "mm")) +
+    scale_color_manual(values=group.colors)
+
+ggsave("../plots/inconsis_B_replicating_0327.png", height = 10, width = 10)
+p
+```
+
+
+############ here we then produce the line plots for metrics
+
+```{r}
+metrics = read.csv("../data/CH_result_tonsil_0325.csv") # metrics prev calced
+colorv = c("#f6511d","#ffb400","#00a6ed","#7fb800","#A149FA")
+names(colorv) = c('ch_snap', 'ch_feature', 'ch_concact', 'ch_muse', 'ch_spice')
+# CH
+
+p = ggplot(metrics,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("spleen CH") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)
+ggsave("../plots/tonsil_ch_0325.svg", height = 3, width = 5)
+p
+```
+
+
+```{r}
+metrics = read.csv("../data/SS_result_tonsil_0325.csv") # metrics prev calced
+colorv = c("#f6511d","#ffb400","#00a6ed","#7fb800","#A149FA")
+names(colorv) = c('ch_snap', 'ch_feature', 'ch_concact', 'ch_muse', 'ch_spice')
+# CH
+
+p = ggplot(metrics,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("spleen SS") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)
+ggsave("../plots/tonsil_ss_0325.svg", height = 3, width = 5)
+p
+```
+
+
+```{r}
+metrics = read.csv("../data/DB_result_tonsil_0325.csv") # metrics prev calced
+colorv = c("#f6511d","#ffb400","#00a6ed","#7fb800","#A149FA")
+names(colorv) = c('ch_snap', 'ch_feature', 'ch_concact', 'ch_muse', 'ch_spice')
+# CH
+
+p = ggplot(metrics,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("spleen DB") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)
+ggsave("../plots/tonsil_db_0325.svg", height = 3, width = 5)
+p
+```
+
+
+```{r}
+metrics = read.csv("../data/MOD_result_tonsil_0325.csv") # metrics prev calced
+colorv = c("#f6511d","#ffb400","#00a6ed","#7fb800","#A149FA")
+names(colorv) = c('ch_snap', 'ch_feature', 'ch_concact', 'ch_muse', 'ch_spice')
+# CH
+
+p = ggplot(metrics,aes(x=res, y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("spleen Mod") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)
+ggsave("../plots/tonsil_mod_0325.svg", height = 3, width = 5)
+p
+```
+
+
+
