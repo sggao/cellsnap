@@ -23,12 +23,45 @@ File descriptions examples
 │   ├── benchmark_DB.ipynb # metric: 'davies_bouldin_score'
 │   ├── benchmark_Mod.ipynb # metric: 'modularity'
 │   └── analysis_plot_murine.Rmd # related plotting and analysis code in R
-├── dir2
-│   ├── file21.ext
-│   ├── file22.ext
-│   └── file23.ext
-├── dir3
-├── file_in_root.ext
-└── README.md
+│
+├── CODEX_tonsil/code # contains all code used for CODEX tonsil analysis
+│   ....
+│   └── files # same file types and naming format as spleen folder
+│
+├── CODEX_cHL/code # contains all code used for CODEX cHL analysis
+│   ....
+│   └── files # same file types and naming format as spleen folder
+│
+├── CoxMx_liver/code # contains all code used for CosMx liver analysis
+│   ....
+│   └── files # same file types and naming format as spleen folder
+│
+├── Benchmark_spleen # contains all code used for parameter benchmarking on the CODEX spleen dataset
+|   |
+│   ├── prep_murine_bench.ipynb # data preparation
+|   |
+│   ├── cluster_res # benchmark Leiden clustering resolution used to construct neighborhood composition
+|   |   ├── cnn_train_res0.2.py # SNAP-CNN train, at res = 0.2
+|   |   ├── ... # other resolutions
+|   |   ├── get_cnn_res_related.ipynb # SNAP-CNN get embedding
+|   |   ├── get_dbGNN_embed_res.ipynb # SNAP-GNN-duo train and get embedding
+|   |   ├── benchmark_CH_nbres.ipynb # get metrics
+|   |   └── ... # other metrics
+|   |
+│   ├── NN_sizse # benchmark K number NN to construct neighborhood composition
+|   │   ....
+│   └── files # same file types and naming format as cluster_res folder
+|   |
+│   ├── Image_alpha # benchmark image binarization quantile
+|   │   ....
+│   └── files # same file types and naming format as cluster_res folder
+|   |
+│   ├── Image_size # benchmark image size
+|   │   ....
+│   └── files # same file types and naming format as cluster_res folder
+|   |
+│   └── plot_bench.Rmd # plotting code
+|   |
+└── Benchmark_duo/code # contains all code used for model structure benchmarking on the CODEX spleen dataset
 
 ```
