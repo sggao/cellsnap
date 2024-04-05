@@ -1,0 +1,299 @@
+---
+title: "chl_codex_plot"
+output: html_document
+---
+
+```{r}
+ssnap = read.csv('../data/double_snap_combo_stable_binVer_0325.csv')
+ssnap$X = NULL # first row is rnum
+colnames(ssnap) = paste0('PC_', rep(1:ncol(ssnap)))
+rownames(ssnap) = paste0('cell_', rep(1:nrow(ssnap)))
+
+library(Seurat)
+snp <- CreateSeuratObject(counts = t(ssnap), assay = "cnp")
+SetAssayData(object = snp, slot = "data", new.data =t(ssnap), assay="cnp")
+snp <- ScaleData(snp) 
+snp<- RunPCA(snp, features = rownames(snp))
+snp <-  FindNeighbors(snp, dims = 1:30)
+
+# umap plotting
+#snp <- RunUMAP(snp, dims = 1:30)
+snp <- RunUMAP(snp, dims = 1:30, seed.use = 1)
+```
+
+### get color
+
+```{r}
+library(Polychrome)
+set.seed(42)
+P27 = createPalette(27,  c("#010101", "#ff0000"), M=1000)
+swatch(P27)
+```
+
+
+```{r}
+df_meta = read.csv('../data/features_and_metadata_withAnn_0326.csv')
+
+## for this umap plot, we have 32 clusters intotal
+## for visualization purpose (color panel visability limitation)
+## cluster number > 16 were manually binned together based on annotation
+## this new cluster number was only used for umap visualization
+
+df_meta$snap_res1_bin = df_meta$snap_res1
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '21'] = '19' # bin dc
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '22'] = '21'
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '23'] = '22'
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '24'] = '21' # bin stroma
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '25'] = '17' # bin endothelial
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '26'] = '23' # bin nk
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '27'] = '23' # bin nk
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '28'] = '24' # bin cd8
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '29'] = '24' # bin cd8
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '30'] = '25' 
+df_meta$snap_res1_bin[df_meta$snap_res1_bin == '31'] = '26' 
+
+embd = data.frame(umap1 = snp@reductions$umap@cell.embeddings[,1],
+                  umap2 = snp@reductions$umap@cell.embeddings[,2],
+                  label = as.character(df_meta$snap_res1))
+
+
+bkc = P27
+names(bkc) = c('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11',
+               '12', '14', '13', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25','26')
+
+library(ggplot2)
+p1 = ggplot(embd)  + 
+  geom_point(aes(x=umap1, y=umap2, color=label,size = 0.1,stroke = 0), cex = 0.5) +
+  labs( x = "tsne 1", y = "tsne 2") + theme_classic() + ggtitle("sr") +
+  scale_color_manual(values = bkc)
+ggsave("../plots/umap_chlcodex_snap_0327.png",p1, height = 7, width = 7.8)
+p1
+```
+
+########## looks good, work on the feature only version
+
+```{r}
+feat = read.csv('../data/features_and_metadata_withAnn_0326.csv')
+feat = feat[,c('CD2', 'CD56',
+       'CD20', 'CD30', 'CD31', 'CD4', 
+         'CD57',  'CD7', 'CD8',
+        'Granzyme.B','FoxP3', 'CD11c', 'CD16', 'CD206', 'CD163', 'CD68', 'CD15', 'CD11b',
+        'MCT', 'Cytokeratin', 
+       'Podoplanin', 'a.SMA')] # same input marker as cellsnap
+
+rownames(feat) = paste0('cell_', rep(1:nrow(feat)))
+
+library(Seurat)
+featt <- CreateSeuratObject(counts = t(feat), assay = "cnp")
+SetAssayData(object = featt, slot = "data", new.data =t(feat), assay="cnp")
+featt <- ScaleData(featt) 
+featt<- RunPCA(featt, features = rownames(featt))
+featt <-  FindNeighbors(featt, dims = 1:20)
+
+# umap plotting
+featt <- RunUMAP(featt, dims = 1:20, seed.use = 1)
+#p1 <- DimPlot(snp, label = TRUE, repel = TRUE, label.size = 2.5) #+ NoLegend()
+#p1
+```
+
+```{r}
+#df_meta = read.csv('../data/save_spleen_ann_dec27.csv')
+embd = data.frame(umap1 = featt@reductions$umap@cell.embeddings[,1],
+                  umap2 = featt@reductions$umap@cell.embeddings[,2],
+                  label = as.character(df_meta$feat_res1))
+
+
+library(ggplot2)
+p1 = ggplot(embd)  + 
+  geom_point(aes(x=umap1, y=umap2, color=label,size = 0.1, stroke = 0), cex = 0.5) +
+  labs( x = "tsne 1", y = "tsne 2") + theme_classic() + ggtitle("sr") +
+  scale_color_manual(values = bkc)
+ggsave("../plots/umap_chlcodex_feat_0325.png",p1,height = 6, width = 7.8)
+p1
+```
+
+
+###################### focus on making cell type location plots
+
+```{r}
+library(ggsci)
+library(ggplot2)
+
+#df_meta = read.csv('../data/features_and_metadata_withAnn_feb23.csv')
+
+ggc = c("#8DD3C7","#BEBADA", "#FB8072", "#A6CEE3",
+                                "#1F78B4", "#B2DF8A", "#33A02C",
+                                "#FB9A99", "grey57", "#FDBF6F",
+                                "#FF7F00")
+names(ggc) = c('B',
+    'CD4',
+    'CD8',
+    'DC',
+    'Endothelial',
+    'Macrophage',
+    'Mast',
+    'NK/Mono/Neutrophil',
+    'Other', 
+    'Stroma',
+    'Tumor')
+
+p = ggplot(df_meta, aes(x = X_cent, y = Y_cent, color = snap_res1_ann, size = 15)) +
+    geom_point(size = 0.25, stroke = 0.25) + theme_classic() +
+    theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.margin = unit(c(0.0001,0.0001,0.0001,0.0001), "mm")) +
+      scale_color_manual(values = ggc) + 
+    theme(
+      plot.background = element_rect(fill = "black")
+      )
+ggsave("../plots/cell_loc_chlcodex_0325.png",p ,height = 5, width = 6)
+p
+```
+
+```{r}
+p = ggplot(df_meta, aes(x = X_cent, y = Y_cent, color = snap_res1_ann, size = 15)) +
+    geom_point(size = 0.25, stroke = 0.25) + theme_classic() +
+    theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      #legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.margin = unit(c(0.0001,0.0001,0.0001,0.0001), "mm")) +
+      scale_color_manual(values = ggc) + 
+    theme(
+      plot.background = element_rect(fill = "black")
+      )
+ggsave("../plots/cell_loc_chlcodex_temp.png",p ,height = 5, width = 6)
+p
+```
+
+
+##### all snap t cells location plot out
+
+#######
+
+```{r}
+df = df_meta # df with all the meta labels
+plotdf = data.frame(snap_clust = df$snap_res1,
+                    snap_ann = df$snap_res1_ann,
+                    f_clust = df$feat_res1,
+                    f_ann = df$feat_res1_ann,
+                    x = df$X_cent,
+                    y = df$Y_cent
+                    )
+
+targetc = bkc
+feat_b = c(6,8,9,12,14,20)
+i = 0
+for(clust in feat_b){ # do this by cluster number
+  i = i + 1
+  print(clust)
+  temp = plotdf
+  temp$plot = "None"
+  temp$plot[temp$snap_clust == clust] = 'clust'
+  group.colors <- c( "clust" = targetc[as.character(clust)][[1]], "None" = "#FFFFFF00")
+  
+  p = ggplot(temp, aes(x = x, y = y, color = plot)) +
+    geom_point(size = 0.15, stroke = 0.15) + theme_classic() +
+    theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.margin = unit(c(0.0001,0.0001,0.0001,0.0001), "mm")) +
+    scale_color_manual(values=group.colors)
+  
+  assign(paste0("p", i), p)
+}
+
+library(patchwork)
+pp = wrap_plots(p1,p2,p3,p4,p5,p6, ncol = 3)
+pp
+ggsave("../plots/snap_t_0325.png", height = 4, width = 6)
+```
+
+
+
+### metrics
+############ here we then produce the line plots for metrics
+
+```{r}
+metrics = read.csv("../data/CH_result_chlcdxfull_0325.csv") # metrics prev calced
+colorv = c("#f6511d","#ffb400","#00a6ed","#7fb800","#A149FA")
+names(colorv) = c('ch_snap', 'ch_feature', 'ch_concact', 'ch_muse', 'ch_spice')
+# CH
+
+p = ggplot(metrics,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("CH") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)
+ggsave("../plots/chlcdxf_ch_0327.svg", height = 3, width = 5)
+p
+```
+
+```{r}
+metrics = read.csv("../data/SS_result_chlcdxfull_0325.csv") # metrics prev calced
+colorv = c("#f6511d","#ffb400","#00a6ed","#7fb800","#A149FA")
+names(colorv) = c('ch_snap', 'ch_feature', 'ch_concact', 'ch_muse', 'ch_spice')
+# CH
+
+p = ggplot(metrics,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("SS") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)
+ggsave("../plots/chlcdxf_ss_0327.svg", height = 3, width = 5)
+p
+```
+
+```{r}
+metrics = read.csv("../data/DB_result_chlcdxfull_0325.csv") # metrics prev calced
+colorv = c("#f6511d","#ffb400","#00a6ed","#7fb800","#A149FA")
+names(colorv) = c('ch_snap', 'ch_feature', 'ch_concact', 'ch_muse', 'ch_spice')
+# CH
+
+p = ggplot(metrics,aes(x=k,y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("DB") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)
+ggsave("../plots/chlcdxf_db_0327.svg", height = 3, width = 5)
+p
+```
+
+```{r}
+metrics = read.csv("../data/Mod_result_chlcdxfull_0325.csv") # metrics prev calced
+colorv = c("#f6511d","#ffb400","#00a6ed","#7fb800","#A149FA")
+names(colorv) = c('ch_snap', 'ch_feature', 'ch_concact', 'ch_muse', 'ch_spice')
+# CH
+
+p = ggplot(metrics,aes(x=res, y=value, colour=variable,fill = variable)) +
+  stat_summary(geom = "line", fun.y = mean, size = 0.6) +
+  stat_summary(geom = "ribbon", fun.data = mean_cl_normal, fun.args=list(conf.int=0.95), alpha = 0.3, colour = NA) +
+  theme_classic()+ ggtitle("Mod") + scale_fill_manual(values = colorv) + scale_color_manual(values = colorv)
+ggsave("../plots/chlcdxf_mod_0327.svg", height = 3, width = 5)
+p
+```
+

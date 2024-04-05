@@ -1,0 +1,245 @@
+---
+title: "liver_469_score"
+output: html_document
+---
+
+# script focused on analysis related to macrophages in liver dataset
+
+```{r}
+df_normed_counts = read.csv('../../Liver_share_jason/data/livcan_counts_y4_x69.csv')
+df_meta = read.csv('../../../arturito_local/final_R_part/liver/data/livcan_meta_y4_x69_withClusters_0327.csv')
+
+# subset
+df_meta_mac = subset(df_meta, df_meta$snapres1 %in% c(5,6,10,25))
+df_normed_counts_mac = subset(df_normed_counts, df_meta$snapres1 %in% c(5,6,10,25))
+
+df_meta_mac$mac_stat = 'Other'
+df_meta_mac$mac_stat[df_meta_mac$snapres1 == 6] = 'snap6'
+```
+
+
+## get DEG analysis
+
+```{r}
+library(limma)
+
+limma_df=t(df_normed_counts_mac)
+list <- c(df_meta_mac$mac_stat) %>% factor(., levels = c("snap6","Other"), ordered = F)
+list <- model.matrix(~factor(list)+0)
+colnames(list) <- c("snap6","Other")
+df.fit <- lmFit(limma_df, list) 
+## deg start
+df.matrix <- makeContrasts(snap6 - Other , levels = list)
+fit <- contrasts.fit(df.fit, df.matrix)
+fit <- eBayes(fit)
+tempOutput <- topTable(fit,n = Inf, adjust = "fdr")
+
+nrDEG = na.omit(tempOutput)
+diffsig <- nrDEG  
+
+# cd45 in small intestine
+results = diffsig
+results$Gene = rownames(results)
+#results$Estimate = -1 * results$Estimate # reverse direction
+results$Color <- "NS or FC < 0.5"
+results$Color[results$adj.P.Val < 0.05] <- "P.adj < 0.05"
+results$Color[((results$logFC) < -0.5) & (results$adj.P.Val < 0.05)] <- "FC < -0.5"
+results$Color[((results$logFC) > 0.5) & (results$adj.P.Val < 0.05)] <- "FC > 0.5"
+results$Color <- factor(results$Color,
+                        levels = c("NS or FC < 0.5", "P.adj < 0.05",
+                                   "FC < -0.5", "FC > 0.5"))
+
+# pick top genes for either side of volcano to label
+# order genes for convenience:
+results$invert_P <- (-log10(results$adj.P.Val)) * sign(results$logFC)
+top_g <- c()
+
+top_g <- c(top_g,
+            results[, 'Gene'][
+                order(results[, 'logFC'], decreasing = TRUE)[1:15]],
+            results[, 'Gene'][
+                order(results[, 'logFC'], decreasing = FALSE)[1:15]])
+
+top_g <- unique(top_g)
+results <- results[, -1*ncol(results)] # remove invert_P from matrix
+results$adj.P.Val = results$adj.P.Val + 1e-323 # avoid inf 
+library(ggplot2)
+library(scales)
+# Graph results
+p = ggplot(results,
+       aes(x = logFC, y = -log10(adj.P.Val),
+           color = Color, label = Gene)) +
+    geom_vline(xintercept = c(0.5, -0.5), lty = "dashed", lwd = 0.25) +
+    geom_hline(yintercept = -log10(0.05), lty = "dashed", lwd = 0.25) +
+    geom_point(size = 0.5) +
+    labs(x = "Log2FC",
+         y = "Significance, -log10(P.adj)",
+         color = "Significance") +
+    scale_color_manual(values = c(`FC > 0.5` = "firebrick1",
+                                  `FC < -0.5` = "royalblue2",
+                                  `P.adj < 0.05` = "orange2",
+                                  `NS or FC < 1` = "gray"),
+                       guide = guide_legend(override.aes = list(size = 2))) +
+    scale_y_continuous(expand = expansion(mult = c(0,0.05))) +
+    ggrepel::geom_text_repel(data = subset(results, Gene %in% top_g & results$adj.P.Val < 0.05),
+                    size = 2.5, point.padding = 0.15, color = "black",
+                    min.segment.length = .1, box.padding = .2, lwd = 0.25, segment.size = 0.25,
+                    max.overlaps = 100) +
+    theme_classic(base_size = 4) + coord_cartesian(xlim = c(-2.5, 5)) +
+    scale_y_continuous(trans = scales::log1p_trans()) + 
+    theme(legend.position = "bottom") +
+    ggtitle('Macrophages')
+ggsave('../plots/mac_snap_volcano_0327.png', height = 4, width = 5.5)
+ggsave('../plots/mac_snap_volcano_0327.svg', height = 3, width = 3.6)
+#write.csv(diffsig, '../plots/allT_memvsna_2024.csv')
+p
+```
+
+
+## produce modular scores:
+
+
+```{r}
+library(Seurat)
+liver_obj <- CreateSeuratObject(counts = t(df_normed_counts_mac), assay = "rna")
+SetAssayData(object = liver_obj, slot = "data", new.data =t(df_normed_counts_mac), assay="rna")
+```
+
+### M1 score
+
+```{r}
+library(ggpubr)
+
+m1_features <- list(c(
+  "TNF",  "IL6",  "CD86",  "IL1B", "MARCO", "CD80",  "CXCL9", "CXCL10", "CD86",  "IL1A", "IL1B", "IL6",   
+"CCL5", "CD40", "IDO1", "CCR7" 
+))
+
+liver_obj <- AddModuleScore(
+  object = liver_obj,
+  features = m1_features,
+  ctrl = 5,
+  name = 'm1_features'
+)
+
+tempdf = liver_obj@meta.data
+tempdf$mac_stat = df_meta_mac$mac_stat
+# cap between 1% - 99%
+tempdf$m1_features1[tempdf$m1_features1 > quantile(tempdf$m1_features1, 0.98)] = quantile(tempdf$m1_features1, 0.98)
+tempdf$m1_features1[tempdf$m1_features1 < quantile(tempdf$m1_features1, 0.02)] = quantile(tempdf$m1_features1, 0.02)
+
+p1 = ggplot(tempdf, aes(x=mac_stat, y=m1_features1, fill = mac_stat)) + 
+  geom_violin(trim=FALSE, width=1)+
+  geom_boxplot(width=0.05, fill = 'white', outlier.shape = NA)+
+  theme_classic() + ggtitle('m1 module score') +
+  scale_fill_manual(values=c("#5FBDFF", "#DCE319FF")) +
+  stat_compare_means() + theme(legend.position="none", axis.text.x=element_blank())
+#ggsave('../plots/natimm_mac_M1_Features_0327.png', height = 6, width = 7.2)
+p1
+
+```
+
+## M2 score
+
+```{r}
+m2_features <- list(c(
+"ARG1", "IL10", "CD163", "PDCD1LG2", "CD274", "MARCO", "CSF1R", "IL1RN", "IL1R2",   
+"IL4R", "CCL4", "CCL13", "CCL20", "CCL17", "CCL18", "CCL22", "LYVE1", "VEGFA",   
+"VEGFB", "VEGFC", "VEGFD", "EGF", "CTSD", "TGFB1", "TGFB2", "TGFB3", "MMP14",   
+"MMP19", "MMP9", "CLEC7A", "WNT7B", "TNFSF12", "TNFSF8", "CD276", "MSR1", "FN1", "IRF4"    
+))
+
+liver_obj <- AddModuleScore(
+  object = liver_obj,
+  features = m2_features,
+  ctrl = 5,
+  name = 'm2_features'
+)
+
+tempdf = liver_obj@meta.data
+tempdf$mac_stat = df_meta_mac$mac_stat
+# cap between 1% - 99%
+tempdf$m2_features1[tempdf$m2_features1 > quantile(tempdf$m2_features1, 0.98)] = quantile(tempdf$m2_features1, 0.98)
+tempdf$m2_features1[tempdf$m2_features1 < quantile(tempdf$m2_features1, 0.02)] = quantile(tempdf$m2_features1, 0.02)
+
+p2 = ggplot(tempdf, aes(x=mac_stat, y=m2_features1, fill = mac_stat)) + 
+  geom_violin(trim=FALSE, width=1)+
+  geom_boxplot(width=0.05, fill = 'white', outlier.shape = NA)+
+  theme_classic() + ggtitle('m2 module score') +
+  scale_fill_manual(values=c("#5FBDFF", "#DCE319FF")) +
+  stat_compare_means() + theme(legend.position="none", axis.text.x=element_blank())
+#ggsave('../plots/natimm_mac_M1_Features.png', height = 6, width = 7.2)
+p2
+```
+
+
+## Liver specific scores:
+
+```{r}
+liv_inf_features <- list(c(
+"S100A8", "LYZ", "HLA.DPB1", "HLA.DPA1", "VCAN", "S100A6", "CD274", "CXCL8", "HLA.DRA", 
+"TYROBP", "HLA.DRB1", "HLA.DQA1", "IL18", "C1QC", "CD74", "C1QB", "C1QA" 
+))
+
+liver_obj <- AddModuleScore(
+  object = liver_obj,
+  features = liv_inf_features,
+  ctrl = 5,
+  name = 'livinf_features'
+)
+
+tempdf = liver_obj@meta.data
+tempdf$mac_stat = df_meta_mac$mac_stat
+# cap between 1% - 99%
+tempdf$livinf_features1[tempdf$livinf_features1 > quantile(tempdf$livinf_features1, 0.98)] = quantile(tempdf$livinf_features1, 0.98)
+tempdf$livinf_features1[tempdf$livinf_features1 < quantile(tempdf$livinf_features1, 0.02)] = quantile(tempdf$livinf_features1, 0.02)
+
+p3 = ggplot(tempdf, aes(x=mac_stat, y=livinf_features1, fill = mac_stat)) + 
+  geom_violin(trim=FALSE, width=1)+
+  geom_boxplot(width=0.05, fill = 'white', outlier.shape = NA)+
+  theme_classic() + ggtitle('liv inflam module score') +
+  scale_fill_manual(values=c("#5FBDFF", "#DCE319FF")) +
+  stat_compare_means() + theme(legend.position="none", axis.text.x=element_blank())
+#ggsave('../plots/natimm_mac_M1_Features.png', height = 6, width = 7.2)
+p3
+```
+
+
+```{r}
+liv_tol_features <- list(c(
+ "CD5L",  "MARCO", "CD163", "MAF", "VCAM1"
+))
+
+liver_obj <- AddModuleScore(
+  object = liver_obj,
+  features = liv_tol_features,
+  ctrl = 5,
+  name = 'livtol_features'
+)
+
+tempdf = liver_obj@meta.data
+tempdf$mac_stat = df_meta_mac$mac_stat
+# cap between 1% - 99%
+tempdf$livtol_features1[tempdf$livtol_features1 > quantile(tempdf$livtol_features1, 0.98)] = quantile(tempdf$livtol_features1, 0.98)
+tempdf$livtol_features1[tempdf$livtol_features1 < quantile(tempdf$livtol_features1, 0.02)] = quantile(tempdf$livtol_features1, 0.02)
+
+p4 = ggplot(tempdf, aes(x=mac_stat, y=livtol_features1, fill = mac_stat)) + 
+  geom_violin(trim=FALSE, width=1)+
+  geom_boxplot(width=0.05, fill = 'white', outlier.shape = NA)+
+  theme_classic() + ggtitle('liv toler module score') +
+  scale_fill_manual(values=c("#5FBDFF", "#DCE319FF")) +
+  stat_compare_means() + theme(legend.position="none", axis.text.x=element_blank())
+#ggsave('../plots/natimm_mac_M1_Features.png', height = 6, width = 7.2)
+p4
+```
+
+```{r}
+library(patchwork)
+
+pp = wrap_plots(p1, p2, p3, p4, ncol = 4)
+ggsave('../plots/macsnap_scoress_0327.svg', height = 4, width = 12)
+pp
+```
+
+
+

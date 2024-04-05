@@ -1,0 +1,238 @@
+---
+title: "tumor"
+output: html_document
+---
+
+## some analysis code related to tumors in liver dataset
+
+
+```{r}
+#library(GSVA)
+df_normed_counts = read.csv('../../Liver_share_jason/data/livcan_counts_y4_x69.csv')
+df_meta = read.csv('../../../arturito_local/final_R_part/liver/data/livcan_meta_y4_x69_withClusters_0327.csv')
+
+# subset
+df_meta_tumor = subset(df_meta, df_meta$snapres1 %in% c(0,4,7,8,9,12,14,16,17,23,24))
+df_normed_counts_tumor = subset(df_normed_counts, df_meta$snapres1 %in% c(0,4,7,8,9,12,14,16,17,23,24))
+df_meta_tumor$tumor_stat = 'Other'
+df_meta_tumor$tumor_stat[df_meta_tumor$snapres1 %in% c(7,8,17)] = 'Core'
+```
+
+######### then we run cNMF in the python code
+
+
+## load the cNMF results into R
+```{r}
+usage_gep = read.csv('../data/tumor_cnmf25_usage_0327.csv')
+usage_gep$X = NULL
+topgene_gep = read.csv('../data/top100g_tumor_cnmf25_0327.csv')
+print(c(dim(usage_gep),
+dim(df_meta_tumor))) # make sure not missing cells
+```
+
+## do quick wilcox test and see if diff between groups:
+
+```{r}
+# first job compare cnmf difference between core and other tumor
+cnmfnum = 25
+plist = c()
+#wlist = c()
+
+for (i in c(1:cnmfnum)){
+  x = subset(usage_gep, df_meta_tumor$tumor_stat == 'Core')[,i]
+  y = subset(usage_gep, df_meta_tumor$tumor_stat == 'Other')[,i]
+  result = wilcox.test(x, y)
+  plist = c(plist, result$p.value)
+  #wlist = c(wlist, result$statistic)
+}
+plist = unlist(plist)
+#wlist = unlist(wlist)
+padj = p.adjust(plist)
+padj
+```
+
+#### Plot out all GEPs between groups
+
+```{r}
+library(ggpubr)
+library(patchwork)
+
+df_meta_tumor$tumor_stat = 'Other'
+df_meta_tumor$tumor_stat[df_meta_tumor$snapres1 %in% c(7,8,17)] = 'Infiltrated'
+df_meta_tumor$tumor_stat = factor(df_meta_tumor$tumor_stat, levels = c('Other', 'Infiltrated'))
+
+for (i in c(1:25)){
+  tempdf = df_meta_tumor
+  tempdf$gep = usage_gep[,i]
+  tempdf$gep[tempdf$gep > quantile(tempdf$gep, 0.98)] =  quantile(tempdf$gep, 0.98) # 98% quantile
+  p = ggplot(tempdf, aes(x=tumor_stat, y=gep, fill = tumor_stat)) + 
+    geom_violin(trim=FALSE, width=1)+
+    geom_boxplot(width=0.05, fill = 'white', outlier.shape = NA)+
+    theme_classic() + ggtitle(paste0('GEP',as.character(i))) +
+    scale_fill_manual(values=c("#FFC8C8", "#FC6736")) +
+    stat_compare_means(size = 2) + theme(legend.position="none", axis.title.x=element_blank()) +
+    ylab("GEP usage")
+  #ggsave('../plots/natimm_mac_M1_Features.png', height = 6, width = 7.2)
+  assign(paste0('p_',as.character(i)), p)
+}
+pp = wrap_plots(list(p_1, p_2, p_3, p_4, p_5,
+                p_6, p_7, p_8, p_9, p_10, p_11, p_12, p_13, p_14,
+                p_15, p_16, p_17, p_18, p_19, p_20,
+                p_21, p_22, p_23, p_24, p_25), ncol = 5)
+ggsave('../plots/gep_25_compare_0327.png', pp, height = 10, width = 10)
+ggsave('../plots/gep_25_compare_0327.svg', pp, height = 10, width = 10)
+pp
+```
+
+##### all look very different, could consider annotation of the geps
+
+
+## use enrichR to annotate GEPs
+```{r}
+library(enrichR)
+
+# test gep top
+dbs <- c("GO_Molecular_Function_2015", "GO_Cellular_Component_2015", "GO_Biological_Process_2015")
+enriched <- enrichr(topgene_gep$X2[c(1:20)], dbs)
+results = enriched$GO_Biological_Process_2015
+
+```
+
+#### violin plot for main fig
+
+```{r}
+tl = c(2,19,22,1,3,6) # selected GEPs to show in main fig
+
+for (i in tl){
+  tempdf = df_meta_tumor
+  tempdf$gep = usage_gep[,i]
+  tempdf$gep[tempdf$gep > quantile(tempdf$gep, 0.98)] =  quantile(tempdf$gep, 0.98) # 98% quantile
+  p = ggplot(tempdf, aes(x=tumor_stat, y=gep, fill = tumor_stat)) + 
+    geom_violin(trim=FALSE, width=1)+
+    geom_boxplot(width=0.05, fill = 'white', outlier.shape = NA)+
+    theme_classic() + ggtitle(paste0('GEP',as.character(i))) +
+    scale_fill_manual(values=c("#FFC8C8", "#FC6736")) +
+    stat_compare_means(size = 2) + theme(legend.position="none", axis.title.x=element_blank()) +
+    ylab("GEP usage")
+  #ggsave('../plots/natimm_mac_M1_Features.png', height = 6, width = 7.2)
+  assign(paste0('p_',as.character(i)), p)
+}
+
+pp = wrap_plots(list(p_2, p_19, p_22, 
+                     p_1, p_3, p_6), ncol = 3)
+ggsave('../plots/gep_diff_compare_0327.png', pp, height = 4, width = 6)
+ggsave('../plots/gep_diff_compare_0327.svg', pp, height = 4, width = 6)
+pp
+```
+
+#### then plot tumor subsets locations for supp
+
+
+## tumor clusters from cellsnap
+
+```{r}
+df = df_meta_tumor # df with all the meta labels
+plotdf = data.frame(snap_clust = df$snapres1,
+                    f_clust = df$featres1,
+                    x = df$x_slide_mm,
+                    y = df$y_slide_mm
+                    )
+group.colors <- c( "clust" = "#FF1E00", "None" = "#FFFFFF00")
+
+snap_b = c(0,4,7,8,9,12,14,16,17,23,24)
+i = 0
+for(clust in snap_b){ # do this by cluster number
+  i = i + 1
+  print(clust)
+  temp = plotdf
+  temp$plot = "None"
+  temp$plot[temp$snap_clust == clust] = "clust"
+  
+  p = ggplot(temp, aes(x = x, y = y, color = plot)) +
+    geom_point(size = 0.25, stroke = 0.25) + theme_classic() +
+    theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.margin = unit(c(0.0001,0.0001,0.0001,0.0001), "mm")) +
+    scale_color_manual(values=group.colors)
+  
+  assign(paste0("p", i), p)
+}
+
+library(patchwork)
+pp = wrap_plots(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11, ncol = 4)
+pp
+ggsave("../plots/snap_tumors_0327.png", height = 6, width = 8)
+```
+
+
+## tumor cluster from feature clustering
+
+```{r}
+group.colors <- c( "clust" = "#FF1E00", "None" = "#FFFFFF00")
+feat_b = c(0,1,6,7,11)
+i = 0
+for(clust in feat_b){ # do this by cluster number
+  i = i + 1
+  print(clust)
+  temp = plotdf
+  temp$plot = "None"
+  temp$plot[temp$f_clust == clust] = "clust"
+  
+  p = ggplot(temp, aes(x = x, y = y, color = plot)) +
+    geom_point(size = 0.25, stroke = 0.25) + theme_classic() +
+    theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      legend.position="none",
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank(),
+      plot.margin = unit(c(0.0001,0.0001,0.0001,0.0001), "mm")) +
+    scale_color_manual(values=group.colors)
+  
+  assign(paste0("p", i), p)
+}
+
+library(patchwork)
+pp = wrap_plots(p1,p2,p3,p4,p5, ncol = 4)
+pp
+ggsave("../plots/feat_tumors_0327.png", height = 4, width = 8)
+```
+
+#### then we do heatmap, based on gep and top 20 genes:
+
+```{r}
+gep_spec = read.csv('../data/gep_spectra_cnmf25_0327.csv', row.names = 1)
+top20genes = c()
+for (i in c(1:25)){
+  gg = topgene_gep[c(1:10),i] # top 20 genes # changed to top10 other wise hard to viz
+  top20genes = c(gg, top20genes)
+}
+top20genes = unique(unlist(top20genes))
+#top20genes
+
+gep_spec_sub = gep_spec[top20genes,]
+gep_spec_sub = t(scale(t(gep_spec_sub)))
+library(pheatmap)
+pdf(file="../plots/gene_spectra_top10_0327.pdf",height = 15, width = 5)
+pheatmap(gep_spec_sub, cluster_rows=FALSE, cluster_cols=FALSE, fontsize_row = 6,
+         color=colorRampPalette(c("#FF00FF", "#000000", "#FFFF00"))(50))
+dev.off()
+```
+
+

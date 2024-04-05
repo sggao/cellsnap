@@ -1,0 +1,100 @@
+---
+title: "bench_plot"
+output: html_document
+---
+
+## first plot out loss reduction
+
+```{r}
+df1 = read.csv('../data/bench_duognn/singVsduo/fgnnolny_loss_0326.csv')
+df2 = read.csv('../data/bench_duognn/singVsduo/sgnnolny_loss_0326.csv')
+df3 = read.csv('../data/bench_duognn/nbhd_lost_spleen_0327.csv')
+df3 = subset(df3, df3$nbhd == 20)
+df3$nbhd = NULL
+
+dfall = do.call('rbind', list(df1,df2,df3))
+dfall$Model = factor(dfall$Model, levels = c('sGNN', 'fGNN', 'cellsnap'))
+```
+
+
+## do bar plot
+
+```{r}
+library(dplyr)
+
+temp = subset(dfall, dfall$Loss_type == 'L1')
+# Data
+data <- temp %>% select(Loss, Model) 
+# Calculates mean, sd, se and IC
+my_sum <- data %>%
+  group_by(Model) %>%
+  dplyr::summarise( 
+    n=n(),
+    mean=mean(Loss),
+    sd=sd(Loss)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+ 
+# Standard deviation
+p = ggplot(my_sum) +
+  geom_bar( aes(x=Model, y=mean, fill=Model), stat="identity", alpha=0.7, width = 0.4) +
+  geom_errorbar( aes(x=Model, ymin=mean-sd, ymax=mean+sd), width=0.08, colour="black", alpha=0.9, size=0.2) +
+  ggtitle("L1") + theme_classic() + scale_fill_manual(values = c("#00AFBB", "#E7B800", "#FC4E07"))
+ggsave("../plots/duoBench_L1_0327.svg", height = 3, width = 4)
+p
+
+```
+
+
+```{r}
+temp = subset(dfall, dfall$Loss_type == 'L2')
+# Data
+data <- temp %>% select(Loss, Model) 
+# Calculates mean, sd, se and IC
+my_sum <- data %>%
+  group_by(Model) %>%
+  dplyr::summarise( 
+    n=n(),
+    mean=mean(Loss),
+    sd=sd(Loss)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+ 
+# Standard deviation
+p = ggplot(my_sum) +
+  geom_bar( aes(x=Model, y=mean, fill=Model), stat="identity", alpha=0.7, width = 0.4) +
+  geom_errorbar( aes(x=Model, ymin=mean-sd, ymax=mean+sd), width=0.08, colour="black", alpha=0.9, size=0.2) +
+  ggtitle("L2") + theme_classic() + scale_fill_manual(values = c("#00AFBB", "#E7B800", "#FC4E07"))
+ggsave("../plots/duoBench_L2_0327.svg", height = 3, width = 4)
+p
+```
+
+
+```{r}
+temp = subset(dfall, dfall$Loss_type == 'CE')
+# Data
+data <- temp %>% select(Loss, Model) 
+# Calculates mean, sd, se and IC
+my_sum <- data %>%
+  group_by(Model) %>%
+  dplyr::summarise( 
+    n=n(),
+    mean=mean(Loss),
+    sd=sd(Loss)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+ 
+# Standard deviation
+p = ggplot(my_sum) +
+  geom_bar( aes(x=Model, y=mean, fill=Model), stat="identity", alpha=0.7, width = 0.4) +
+  geom_errorbar( aes(x=Model, ymin=mean-sd, ymax=mean+sd), width=0.08, colour="black", alpha=0.9, size=0.2) +
+  ggtitle("CE") + theme_classic() + scale_fill_manual(values = c("#00AFBB", "#E7B800", "#FC4E07"))
+ggsave("../plots/duoBench_CE_0327.svg", height = 3, width = 4)
+p
+```
+
+
+
