@@ -201,9 +201,8 @@ def cluster_refine(label,
                    label_ref,
                    entropy_threshold=0.75,
                    concen_threshold=1,
-                   max_breaks=3, 
+                   max_breaks=3,
                    size_lim=50):
-    
     """
     Refine clustering results from CellSNAP embedding to make sure robustenss. If a cluster from CellSNAP result contains a high mixture of population defined by original input population identity (eg acquire from Leiden clustering on the feature similarity graph), this cluster will be futher refined to represent the best biological status.
     Parameters
@@ -230,7 +229,8 @@ def cluster_refine(label,
         if entropy(ref_l_freq) > entropy_threshold:
             for i in np.arange(max_breaks - 1):
                 bb = label[label_ref == ref_l_freq.index[i]]
-                if entropy(bb.value_counts()) < concen_threshold and ref_l_freq.iloc[i] >= size_lim:
+                if entropy(bb.value_counts(
+                )) < concen_threshold and ref_l_freq.iloc[i] >= size_lim:
                     label_out[(label == l) & (
                         label_ref == ref_l_freq.index[i])] = l + '-' + str(i)
 

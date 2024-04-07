@@ -14,12 +14,9 @@ class SNAP_Dataset(Dataset):
 
     def __init__(self,
                  df,
-                 k=15,
+                 nbhd_composition=15,
                  feature_neighbor=15,
                  spatial_neighbor=15,
-                 pca_components=25,
-                 feat_resolution=1.0,
-                 resolution_tol=0.05,
                  features_list=None,
                  path2img=None,
                  use_transform=False):
@@ -35,12 +32,12 @@ class SNAP_Dataset(Dataset):
                 adjacency and neighborhood information.
                 @ if will be training SNAP-CNN (extracting morphology information from image files), the supplied 2D cell
                 location inforamtion should be consistent with the pixel locations of cell location in the input image files. 
-        k : int 
+        nbhd_composition : int 
             Number of neighboring cells in neighborhood composition vector, default 15
         feature_neighbor : int
-            Number of neighbors to consider in SNAP GNN (feature similarity graph)
-        pca_component : int
-            Number of PCs used in feature graph. if 'None' no PCA reduction will be performed on the input feature profile
+            Number of neighbors to consider in feature similarity graph
+        spatial_neighbor : int
+            Number of neighbors to consider in spatial similarity graph
         features_list : list(str)
             List of feature names to be used in CellSNAP process
         path2img : str, optional
@@ -51,35 +48,40 @@ class SNAP_Dataset(Dataset):
         """
 
         super().__init__()
-        self.transform = transforms.Compose([
-            transforms.RandomRotation(degrees=180),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip()
-        ])
         self.df = df
-        self.n_cells = self.df.shape[0]
-        self.power = len(str(self.n_cells))
-        self.k = k
+        self.nbhd_composition = nbhd_composition
         self.feature_neighbor = feature_neighbor
         self.spatial_neighbor = spatial_neighbor
-        self.feat_resolution = feat_resolution
-        self.resolution_tol = resolution_tol
-        self.pca_components = pca_components
         self.features_list = features_list
         self.path2img = path2img
         self.use_transform = use_transform
+        if self.use_transform:
+            self.transform = transforms.Compose([
+                transforms.RandomRotation(degrees=180),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip()
+            ])
 
     def __len__(self):
         return self.labels.shape[0]
 
     def __getitem__(self, index):
-        img = np.load(os.path.join(self.path2img, f"img_{index:0{self.power}d}.npy"))
+        img = np.load(
+            os.path.join(self.path2img, f"img_{index:0{self.power}d}.npy"))
         if self.use_transform:
             img = self.transform(torch.Tensor(img))
         labels = self.labels[index]
         return img, labels
 
-    def initialize(self, cent_x, cent_y, celltype = 'feature_labels', cluster=None, n_runs=1):
+    def initialize(self,
+                   cent_x,
+                   cent_y,
+                   celltype='feature_labels',
+                   pca_components=25,
+                   cluster_res=1.0,
+                   resolution_tol=0.05,
+                   n_clusters=None,
+                   n_runs=1):
         """
         Initialize the class object by calculating:
         -feature edges from similarity, used in SNAP-GNN
@@ -92,15 +94,29 @@ class SNAP_Dataset(Dataset):
         cent_x, cent_y : str
             Column names of self.df, which contains location of each cell
         celltype : str
-            Column of self.df, which contains the population identity of each cell.
-            defualt to 'feature_labels' which will run leiden clustering clustering 
-            and produce population identity of each cell. ******* need update???
+            Defualt to 'feature_labels' which will run leiden clustering clustering 
+            and produce population identity of each cell. Otherwise set to a column in self.df 
+            that contains the initial cell type annotation information
+        pca_component : int
+            Number of PCs used in feature graph. if 'None' no PCA reduction will be performed on the input feature profile
+        cluster_res, resolution_tol : float, float
+            Resolution parameter for leiden clustering on features
+        cluster : int
+            Leiden clustering parameter, fix the number of output labels
+        n_runs : int
+            Number of rounds for computing leiden clustering, default to be 1
 
         """
 
         # create metadata for the dataset
-        features = self.df[self.features_list].to_numpy()
+        self.n_cells = self.df.shape[0]
+        self.power = len(str(self.n_cells))
+        features = self.df[self.features_list].to_numpy(
+        ) if self.features_list is not None else self.df.to_numpy()
         self.features = utils.center_scale(features)
+        self.cluster_res = cluster_res
+        self.resolution_tol = resolution_tol
+        self.pca_components = pca_components
 
         # create feature edges and feature labels
         self.feature_edges = graph.get_feature_edges(
@@ -109,26 +125,34 @@ class SNAP_Dataset(Dataset):
             n_neighbors=self.feature_neighbor,
             metric='correlation',
             verbose=False)
-        self.feature_labels = graph.graph_clustering(
-            self.df.shape[0],
-            self.feature_edges,
-            resolution=self.feat_resolution,
-            n_clusters=cluster,
-            n_runs=n_runs,
-            resolution_tol=self.resolution_tol,
-            seed=None,
-            verbose=False)
-        self.df['feature_labels'] = self.feature_labels
+        if celltype == "feature_labels":
+            self.feature_labels = graph.graph_clustering(
+                self.df.shape[0],
+                self.feature_edges,
+                resolution=self.cluster_res,
+                n_clusters=n_clusters,
+                n_runs=n_runs,
+                resolution_tol=self.resolution_tol,
+                seed=None,
+                verbose=False)
+            self.df['feature_labels'] = self.feature_labels
 
-        print('Leiden clustering identified ' +
-               str(len(np.unique(self.feature_labels))) + ' clusters as input population identity.')
+            print('Leiden clustering identified ' +
+                  str(len(np.unique(self.feature_labels))) +
+                  ' clusters as input population identity.')
+        else:
+            print('Predefined annotation identified ' +
+                  str(len(np.unique(self.df[celltype]))) +
+                  ' clusters as input population identity.')
 
         print('Calculating cell neighborhood composition matrix...')
 
         locations = self.df[[cent_x, cent_y]].to_numpy()
         self.locations = locations
         spatial_knn_indices = graph.get_spatial_knn_indices(
-            locations=locations, n_neighbors=self.k, method='kd_tree')
+            locations=locations,
+            n_neighbors=self.nbhd_composition,
+            method='kd_tree')
         cell_nbhd = utils.get_neighborhood_composition(
             knn_indices=spatial_knn_indices,
             labels=self.df[celltype],
@@ -151,7 +175,6 @@ class SNAP_Dataset(Dataset):
                        aggr,
                        pad=1000,
                        verbose=False):
-        
         """
         Helper function takes input of a whole tissue iamge with nuclear and membrane channel.
         Output individual cropped binarized images for each cell of their adjacent tissue information.
@@ -173,7 +196,6 @@ class SNAP_Dataset(Dataset):
             Padding value around input image.
         """
 
-        
         print('Saving images...')
         process_save_images(images=image,
                             locations=self.locations,
@@ -182,5 +204,5 @@ class SNAP_Dataset(Dataset):
                             truncation=truncation,
                             power=self.power,
                             aggr=aggr,
-                            pad=1000,
-                            verbose=False)
+                            pad=pad,
+                            verbose=verbose)
