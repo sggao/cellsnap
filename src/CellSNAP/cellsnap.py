@@ -59,7 +59,7 @@ class CellSNAP:
         self.proj_dim = proj_dim
         self.fc_out_dim = fc_out_dim
         self.cnn_out_dim = cnn_out_dim
-        
+
         return
 
     def fit_snap_cnn(self,
@@ -72,7 +72,6 @@ class CellSNAP:
                      SchedulerAlg=None,
                      scheduler_kwargs=None,
                      print_every=10):
-        
         """
         Train SNAP-CNN to extract morphology encoding.
         Parameters
@@ -152,7 +151,6 @@ class CellSNAP:
         return
 
     def get_cnn_embedding(self, batch_size=512, path2result=None):
-
         """
         Retrieve SNAP-CNN embedding (extracted morphology encoding).
         Parameters
@@ -212,7 +210,7 @@ class CellSNAP:
         path2result : str
             Directory to save output.
         """
-        
+
         if self.cnn_model:
             self.gnn_model = SNAP_GNN_DUO(
                 out_dim=self.output_dim,
@@ -223,9 +221,10 @@ class CellSNAP:
                 fc_out_dim=self.fc_out_dim,
                 cnn_out_dim=self.cnn_out_dim)
         else:
-            self.gnn_model = SNAP_GNN_LITE(out_dim=self.output_dim,
-                                           input_dim=self.dataset.features.shape[1],
-                                           gnn_latent_dim=self.gnn_latent_dim)
+            self.gnn_model = SNAP_GNN_LITE(
+                out_dim=self.output_dim,
+                input_dim=self.dataset.features.shape[1],
+                gnn_latent_dim=self.gnn_latent_dim)
         features = torch.from_numpy(self.dataset.features).float().to(
             self.device)
         features_edges = self.dataset.feature_edges
@@ -397,7 +396,13 @@ class CellSNAP:
 
         return
 
-    def get_snap_clustering(self, neighbor=15, resolution=1.0):
+    def get_snap_clustering(self,
+                            neighbor=15,
+                            resolution=1.0,
+                            entropy_threshold=0.75,
+                            concen_threshold=1,
+                            max_breaks=3,
+                            size_lim=50):
 
         ##### need update here.
 
@@ -413,13 +418,16 @@ class CellSNAP:
         # clean cluster
         from utils import cluster_refine, clean_cluster
         snap_refine = cluster_refine(label=snap_adata.obs['leiden'],
-                                     label_ref=snap_adata.obs['input'])
+                                     label_ref=snap_adata.obs['input'],
+                                     entropy_threshold=entropy_threshold,
+                                     concen_threshold=concen_threshold,
+                                     max_breaks=max_breaks,
+                                     size_lim=size_lim)
         snap_clean = clean_cluster(snap_refine)
         self.snap_clustering = snap_clean
         return
 
     def visualize_umap(self, embedding, label):
-
         """
         Wrapped-up helper function to visualize (UMAP) the embedding.
         Using scanpy functions and default setup.

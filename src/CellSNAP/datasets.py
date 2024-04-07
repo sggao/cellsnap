@@ -57,6 +57,8 @@ class SNAP_Dataset(Dataset):
             transforms.RandomVerticalFlip()
         ])
         self.df = df
+        self.n_cells = self.df.shape[0]
+        self.power = len(str(self.n_cells))
         self.k = k
         self.feature_neighbor = feature_neighbor
         self.spatial_neighbor = spatial_neighbor
@@ -71,7 +73,7 @@ class SNAP_Dataset(Dataset):
         return self.labels.shape[0]
 
     def __getitem__(self, index):
-        img = np.load(os.path.join(self.path2img, f"img_{index:05d}.npy"))
+        img = np.load(os.path.join(self.path2img, f"img_{index:0{self.power}d}.npy"))
         if self.use_transform:
             img = self.transform(torch.Tensor(img))
         labels = self.labels[index]
@@ -171,15 +173,14 @@ class SNAP_Dataset(Dataset):
             Padding value around input image.
         """
 
-        n_cells = self.df.shape[0]
-        power = len(str(n_cells))
+        
         print('Saving images...')
         process_save_images(images=image,
                             locations=self.locations,
                             size=size,
                             save_folder=self.path2img,
                             truncation=truncation,
-                            power=power,
+                            power=self.power,
                             aggr=aggr,
                             pad=1000,
                             verbose=False)
