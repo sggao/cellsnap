@@ -98,7 +98,7 @@ class SNAP_Dataset(Dataset):
             and produce population identity of each cell. Otherwise set to a column in self.df 
             that contains the initial cell type annotation information
         pca_component : int
-            Number of PCs used in feature graph. if 'None' no PCA reduction will be performed on the input feature profile
+            Number of PCs used in expression graph. if 'None' no PCA reduction will be performed on the input feature profile
         cluster_res, resolution_tol : float, float
             Resolution parameter for leiden clustering on features
         cluster : int

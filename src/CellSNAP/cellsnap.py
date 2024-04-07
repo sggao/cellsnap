@@ -43,7 +43,7 @@ class CellSNAP:
         proj_dim : int
             Default 32. Projection dimension for feature and CNN encoding inputs.
         fc_out_dim : int
-            Default 33. Output dimension for feature-GNN and input to MLP head.
+            Default 33. Output dimension for expression-GNN and input to MLP head.
         cnn_out_dim : int
             Default 11. Output dimension for spatial-GNN and input to MLP head.
         """
