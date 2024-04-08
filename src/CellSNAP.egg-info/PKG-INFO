@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: CellSNAP
+Version: 0.0.2
+Summary: A package for enhancing single-cell population delineation by integrating cross-domain information.
+Home-page: https://github.com/sggao/CellSNAP
+Author: Sheng Gao, Bokai Zhu
+Author-email: gaosheng0321@gmail.com, zhubokai@mit.edu
+Project-URL: Bug Tracker, https://github.com/sggao/CellSNAP/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+Official implementation of Cell Spatial And Neighborhood Pattern (CellSNAP), a computational method that learns a single-cell representation embedding by integrating cross-domain information from tissue samples. Through the analysis of datasets spanning spatial proteomic and spatial transcriptomic modalities, and across different tissue types and disease settings, we demonstrate CellSNAP’s capability to elucidate biologically relevant cell populations that were previously elusive due to the relinquished tissue morphological information from images
