@@ -62,6 +62,8 @@ File descriptions examples
 |   |
 │   └── plot_bench.Rmd # plotting code
 |   |
+├── spatial-clust-scripts-main # contains CellSNAP functions (and helper functions) used in the study (dev version)
+|   |
 └── Benchmark_duo/code # contains all code used for model structure benchmarking on the CODEX spleen dataset
 
 ```
