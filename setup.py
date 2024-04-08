@@ -22,7 +22,7 @@ setuptools.setup(
                         'scanpy==1.10.0',
                         'scikit_image==0.19.3',
                         'scikit_learn==1.2.1',
-                        'scipy==1.9.1',
+                        'scipy==1.11.1',
                         'torch==2.0.0',
                         'torch_geometric==2.3.0',
                         'torchvision==0.13.1',
