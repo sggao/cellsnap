@@ -9,7 +9,7 @@ Through the analysis of datasets spanning spatial proteomic and spatial transcri
 NOTE: this repository is under active development, and the current version is only meant for <ins>reviewing and early access testing etc</ins>. We will provide more detailed installation instruction and tutorial soon.
 
 ## Installation
-MaxFuse is hosted on `pypi` and can be installed via `pip`. We recommend working with a fresh virtual environment. In the following example we use conda.
+CellSNAP is hosted on `pypi` and can be installed via `pip`. We recommend working with a fresh virtual environment. In the following example we use conda.
 
 ```
 conda create -n cellsnap python=3.9 # create a new vm
