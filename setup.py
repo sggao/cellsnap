@@ -4,8 +4,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="CellSNAP",
-    version="0.0.2",
+    name="cellsnap",
+    version="0.0.3",
     author="Sheng Gao, Bokai Zhu",
     author_email="gaosheng0321@gmail.com, zhubokai@mit.edu",
     description="A package for enhancing single-cell population delineation by integrating cross-domain information.",

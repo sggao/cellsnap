@@ -1,0 +1,14 @@
+anndata==0.10.6
+leidenalg>=0.9.1
+matplotlib==3.6.2
+numpy==1.23.5
+pandas==2.0.0
+python_igraph==0.11.4
+scanpy==1.10.0
+scikit_image==0.19.3
+scikit_learn==1.2.1
+scipy==1.9.1
+torch==2.0.0
+torch_geometric==2.3.0
+torchvision==0.13.1
+tqdm==4.64.1
