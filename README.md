@@ -14,5 +14,5 @@ CellSNAP is hosted on `pypi` and can be installed via `pip`. We recommend workin
 ```
 conda create -n cellsnap python=3.9 # create a new vm
 conda activate cellsnap # activate cellsnap vm
-pip install CellSNAP==0.0.2 # install cellsnap in vm
+pip install cellsnap==0.0.3 # install cellsnap in vm
 ```
