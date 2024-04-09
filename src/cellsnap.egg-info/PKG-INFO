@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: cellsnap
-Version: 0.0.3
+Version: 0.0.4
 Summary: A package for enhancing single-cell population delineation by integrating cross-domain information.
 Home-page: https://github.com/sggao/CellSNAP
 Author: Sheng Gao, Bokai Zhu
