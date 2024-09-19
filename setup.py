@@ -23,7 +23,7 @@ setuptools.setup(
                         'scikit_image==0.19.3',
                         'scikit_learn==1.2.1',
                         'scipy==1.9.1',
-                        'torch==2.0.0',
+                        'torch==1.12.1',
                         'torch_geometric==2.3.0',
                         'torchvision==0.13.1',
                         'tqdm==4.64.1'],
