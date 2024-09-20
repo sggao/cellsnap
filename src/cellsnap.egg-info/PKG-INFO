@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: cellsnap
-Version: 0.0.5
+Version: 0.0.6
 Summary: A package for enhancing single-cell population delineation by integrating cross-domain information.
 Home-page: https://github.com/sggao/CellSNAP
 Author: Sheng Gao, Bokai Zhu
@@ -12,19 +12,19 @@ Classifier: Operating System :: OS Independent
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 License-File: LICENSE
-Requires-Dist: anndata==0.10.6
+Requires-Dist: anndata>=0.10.6
 Requires-Dist: leidenalg>=0.9.1
-Requires-Dist: matplotlib==3.6.2
-Requires-Dist: numpy>=1.23.5
+Requires-Dist: matplotlib>=3.7.1
+Requires-Dist: numpy>=1.26.0
 Requires-Dist: pandas>=2.0.0
-Requires-Dist: python_igraph==0.11.4
-Requires-Dist: scanpy==1.10.0
-Requires-Dist: scikit_image==0.19.3
-Requires-Dist: scikit_learn==1.2.1
-Requires-Dist: scipy==1.9.1
+Requires-Dist: python_igraph>=0.11.4
+Requires-Dist: scanpy>=1.10.0
+Requires-Dist: scikit_image>=0.21.0
+Requires-Dist: scikit_learn>=1.2.2
+Requires-Dist: scipy>=1.10.0
 Requires-Dist: torch>=1.12.0
-Requires-Dist: torch_geometric==2.3.0
+Requires-Dist: torch_geometric>=2.3.0
 Requires-Dist: torchvision>=0.13.1
-Requires-Dist: tqdm==4.64.1
+Requires-Dist: tqdm>=4.64.1
 
 Official implementation of Cell Spatial And Neighborhood Pattern (CellSNAP), a computational method that learns a single-cell representation embedding by integrating cross-domain information from tissue samples. Through the analysis of datasets spanning spatial proteomic and spatial transcriptomic modalities, and across different tissue types and disease settings, we demonstrate CellSNAP’s capability to elucidate biologically relevant cell populations that were previously elusive due to the relinquished tissue morphological information from images
