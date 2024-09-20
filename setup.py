@@ -11,7 +11,7 @@ setuptools.setup(
     description="A package for enhancing single-cell population delineation by integrating cross-domain information.",
     long_description="Official implementation of Cell Spatial And Neighborhood Pattern (CellSNAP), a computational method that learns a single-cell representation embedding by integrating cross-domain information from tissue samples. Through the analysis of datasets spanning spatial proteomic and spatial transcriptomic modalities, and across different tissue types and disease settings, we demonstrate CellSNAP’s capability to elucidate biologically relevant cell populations that were previously elusive due to the relinquished tissue morphological information from images",
     long_description_content_type="text/markdown",
-    url="https://github.com/sggao/CellSNAP",
+    url="https://github.com/sggao/cellsnap",
     packages=setuptools.find_packages(),
     install_requires=['anndata>=0.10.6',
                         'leidenalg>=0.9.1',
