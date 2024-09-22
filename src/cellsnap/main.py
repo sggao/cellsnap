@@ -47,7 +47,7 @@ def main():
                               cluster_res=1.0)
 
     # train CellSNAP
-    device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     murine_cellsnap = CellSNAP(murine_dataset,
                                device,
                                cnn_model=True,
