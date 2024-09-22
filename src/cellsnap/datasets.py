@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from . import utils
 from . import graph
-from preprocessing import *
+from .preprocessing import *
 
 
 class SNAP_Dataset(Dataset):

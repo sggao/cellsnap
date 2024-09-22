@@ -6,7 +6,7 @@ import scipy
 import skimage
 import sys
 
-sys.path.append("../src/CellSNAP/")
+sys.path.append("../src/cellsnap/")
 from .utils import *
 import os
 from tqdm import tqdm
@@ -24,6 +24,8 @@ def main():
     # pipeline for codex murine dataset
     df = pd.read_csv('data/codex_murine/features_and_metadata.csv',
                      index_col=0)
+    # might want to preprocess
+    df.fillna(0, inplace=True)
     features_list = [
         'CD45', 'Ly6C', 'TCR', 'Ly6G', 'CD19', 'CD169', 'CD106', 'CD3',
         'CD1632', 'CD8a', 'CD90', 'F480', 'CD11c', 'Ter119', 'CD11b', 'IgD',
