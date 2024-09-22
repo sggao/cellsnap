@@ -9,7 +9,7 @@ from . import graph
 from . import preprocessing
 import anndata as ad
 import scanpy as sc
-from .models import *
+from models import *
 import torch.optim as optim
 from matplotlib import pyplot as plt
 
