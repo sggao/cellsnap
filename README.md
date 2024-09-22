@@ -25,5 +25,5 @@ pip install cellsnap==0.0.6 # install cellsnap in vm
 ```
 After installation, you can import the module via
 ```
-import CellSNAP
+import cellsnap
 ```
