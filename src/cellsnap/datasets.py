@@ -4,8 +4,8 @@ from torchvision import transforms
 import os
 import numpy as np
 import pandas as pd
-import utils
-import graph
+from . import utils
+from . import graph
 from preprocessing import *
 
 
