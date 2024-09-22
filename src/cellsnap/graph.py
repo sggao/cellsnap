@@ -6,7 +6,7 @@ import scanpy as sc
 import anndata as ad
 from sklearn.neighbors import NearestNeighbors
 
-import utils
+from . import utils
 
 
 def get_spatial_knn_indices(locations, n_neighbors=15, method='kd_tree'):

@@ -7,13 +7,13 @@ import skimage
 import sys
 
 sys.path.append("../src/CellSNAP/")
-from utils import *
+from .utils import *
 import os
 from tqdm import tqdm
 from skimage.io import imread
-from preprocessing import *
-from datasets import *
-from cellsnap import *
+from .preprocessing import *
+from .datasets import *
+from .cellsnap import *
 
 #############################
 # example code in this file #

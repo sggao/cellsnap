@@ -4,9 +4,9 @@ from torchvision import transforms
 import os
 import numpy as np
 import pandas as pd
-import utils
-import graph
-import preprocessing
+from . import utils
+from . import graph
+from . import preprocessing
 import anndata as ad
 import scanpy as sc
 from models import *
