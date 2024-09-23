@@ -416,7 +416,7 @@ class CellSNAP:
         sc.tl.umap(snap_adata)
         sc.tl.leiden(snap_adata, resolution=resolution)
         # clean cluster
-        from utils import cluster_refine, clean_cluster
+        from .utils import cluster_refine, clean_cluster
         snap_refine = cluster_refine(label=snap_adata.obs['leiden'],
                                      label_ref=snap_adata.obs['input'],
                                      entropy_threshold=entropy_threshold,
