@@ -27,3 +27,4 @@ After installation, you can import the module via
 ```
 import cellsnap
 ```
+For details of the use of CellSNAP, please refer to the tutorials.
